@@ -24,8 +24,9 @@ tourism-app/
 1. **Clone the repository**
 
 ```bash
-git clone git@github.com:marko-kuburic/tourist-app.git
-cd tourist-app
+git clone git@github.com:marko-kuburic/tourism-app.git
+git checkout develop
+cd tourism-app
 ```
 
 2. **Start the project**
@@ -34,8 +35,6 @@ cd tourist-app
 docker-compose up --build
 ```
 ### 🌐 Access the App
-
-Frontend: http://localhost:3000
 
 Backend API: http://localhost:8081
 
