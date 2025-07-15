@@ -16,6 +16,7 @@ services:
       DB_USER: root
       DB_PASSWORD: password
       DB_NAME: tourist_app
+      JWT_SECRET: JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0=
     restart: unless-stopped
 
   mysql:
