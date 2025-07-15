@@ -3,25 +3,18 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"stakeholders/model"
 	"stakeholders/repo"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-)
-
-var (
-	ErrInvalidRole    = errors.New("invalid user role")
-	ErrUsernameExists = errors.New("username already taken")
-	ErrEmailExists    = errors.New("email already registered")
+	"gorm.io/gorm"
 )
 
 type UserService struct {
-	repo repo.UserRepository
-}
-
-func NewUserService(repo repo.UserRepository) *UserService {
-	return &UserService{repo: repo}
+	repo      *repo.UserRepository
+	jwtSecret string
 }
 
 type RegisterRequest struct {
@@ -29,37 +22,28 @@ type RegisterRequest struct {
 	Password       string
 	Email          string
 	Role           model.Role
-	ProfilePicture string // Relative path
-	Biography      string // Biography
-	Motto          string // Motto/quote
+	ProfilePicture string
+	Biography      string
+	Motto          string
+}
+
+type LoginRequest struct {
+	Email    string
+	Password string
+}
+
+func NewUserService(repo repo.UserRepository, jwtSecret string) *UserService {
+	return &UserService{repo: &repo, jwtSecret: jwtSecret}
 }
 
 func (s *UserService) Register(ctx context.Context, req *RegisterRequest) (*model.User, error) {
-	if !model.IsValid(req.Role) {
-		return nil, fmt.Errorf("%w: %s", ErrInvalidRole, req.Role)
-	}
-
 	if len(req.Password) < 8 {
-		return nil, errors.New("password must be at least 8 characters")
-	}
-
-	// Check for existing username
-	if exists, err := s.repo.UsernameExists(ctx, req.Username); err != nil {
-		return nil, fmt.Errorf("database error: %w", err)
-	} else if exists {
-		return nil, fmt.Errorf("username already exists: %s", req.Username)
-	}
-
-	// Check for existing email
-	if exists, err := s.repo.EmailExists(ctx, req.Email); err != nil {
-		return nil, fmt.Errorf("database error: %w", err)
-	} else if exists {
-		return nil, fmt.Errorf("email already registered: %s", req.Email)
+		return nil, errors.New("password must be at least 8 characters long")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hash password: %w", err)
+		return nil, err
 	}
 
 	user := &model.User{
@@ -72,15 +56,63 @@ func (s *UserService) Register(ctx context.Context, req *RegisterRequest) (*mode
 		Motto:          req.Motto,
 	}
 
+	if err := user.Validate(); err != nil {
+		return nil, err
+	}
+
+	usernameExists, err := s.repo.UsernameExists(ctx, req.Username)
+	if err != nil {
+		return nil, err
+	}
+	if usernameExists {
+		return nil, repo.ErrUsernameTaken
+	}
+
+	emailExists, err := s.repo.EmailExists(ctx, req.Email)
+	if err != nil {
+		return nil, err
+	}
+	if emailExists {
+		return nil, repo.ErrEmailTaken
+	}
+
 	if err := s.repo.Create(ctx, user); err != nil {
-		if errors.Is(err, repo.ErrUsernameTaken) {
-			return nil, fmt.Errorf("%w: %s", ErrUsernameExists, req.Username)
-		}
-		if errors.Is(err, repo.ErrEmailTaken) {
-			return nil, fmt.Errorf("%w: %s", ErrEmailExists, req.Email)
-		}
-		return nil, fmt.Errorf("failed to create user: %w", err)
+		return nil, err
 	}
 
 	return user, nil
+}
+
+func (s *UserService) Login(ctx context.Context, req *LoginRequest) (*model.User, string, error) {
+	var user model.User
+	err := s.repo.GetByEmail(ctx, &user, req.Email)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, "", errors.New("invalid credentials")
+		}
+		return nil, "", err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		return nil, "", errors.New("invalid credentials")
+	}
+
+	token, err := s.generateJWT(user)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return &user, token, nil
+}
+
+func (s *UserService) generateJWT(user model.User) (string, error) {
+	claims := jwt.MapClaims{
+		"user_id": user.ID.String(),
+		"email":   user.Email,
+		"role":    user.Role,
+		"exp":     time.Now().Add(time.Hour * 24).Unix(), // Token expires in 24 hours
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(s.jwtSecret))
 }

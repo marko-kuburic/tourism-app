@@ -33,6 +33,12 @@ func (r *UserRepository) Create(ctx context.Context, user *model.User) error {
 	return nil
 }
 
+func (r *UserRepository) GetByEmail(ctx context.Context, user *model.User, email string) error {
+	return r.db.WithContext(ctx).
+		Where("email = ?", email).
+		First(user).Error
+}
+
 func isDuplicateEntryError(err error) bool {
 	if err == nil {
 		return false

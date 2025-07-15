@@ -21,6 +21,7 @@ func NewUserHandler(service *service.UserService) *UserHandler {
 
 func (h *UserHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/register", h.register).Methods("POST")
+	router.HandleFunc("/login", h.login).Methods("POST")
 }
 
 type registerRequest struct {
@@ -31,6 +32,16 @@ type registerRequest struct {
 	ProfilePicture string `json:"profile_picture"`
 	Biography      string `json:"biography"`
 	Motto          string `json:"motto"`
+}
+
+type loginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type loginResponse struct {
+	User  *model.User `json:"user"`
+	Token string      `json:"token"`
 }
 
 func (h *UserHandler) register(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +69,26 @@ func (h *UserHandler) register(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusCreated, user)
 }
 
+func (h *UserHandler) login(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request format", http.StatusBadRequest)
+		return
+	}
+
+	user, token, err := h.service.Login(r.Context(), &service.LoginRequest{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, loginResponse{User: user, Token: token})
+}
+
 func handleServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case strings.Contains(err.Error(), "invalid role"):
@@ -68,6 +99,8 @@ func handleServiceError(w http.ResponseWriter, err error) {
 		respondWithError(w, http.StatusConflict, err.Error())
 	case strings.Contains(err.Error(), "password must be"):
 		respondWithError(w, http.StatusBadRequest, err.Error())
+	case strings.Contains(err.Error(), "invalid credentials"):
+		respondWithError(w, http.StatusUnauthorized, err.Error())
 	default:
 		log.Printf("Internal server error: %v", err)
 		respondWithError(w, http.StatusInternalServerError, "Internal server error")
