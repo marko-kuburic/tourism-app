@@ -6,6 +6,7 @@ import (
 	"stakeholders/model"
 	"strings"
 
+	"github.com/google/uuid" 
 	"gorm.io/gorm"
 )
 
@@ -80,4 +81,14 @@ func (r *UserRepository) EmailExists(ctx context.Context, email string) (bool, e
 		Count(&count).Error
 
 	return count > 0, err
+}
+
+func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID, user *model.User) error {
+	return r.db.WithContext(ctx).
+		Where("id = ?", id).
+		First(user).Error
+}
+
+func (r *UserRepository) Update(ctx context.Context, user *model.User) error {
+	return r.db.WithContext(ctx).Save(user).Error
 }

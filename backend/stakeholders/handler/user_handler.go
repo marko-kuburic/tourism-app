@@ -8,6 +8,7 @@ import (
 	"stakeholders/service"
 	"strings"
 
+	"github.com/google/uuid" 
 	"github.com/gorilla/mux"
 )
 
@@ -22,6 +23,8 @@ func NewUserHandler(service *service.UserService) *UserHandler {
 func (h *UserHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/register", h.register).Methods("POST")
 	router.HandleFunc("/login", h.login).Methods("POST")
+	router.HandleFunc("/block-user/{id}", h.blockUser).Methods("POST") 
+
 }
 
 type registerRequest struct {
@@ -87,6 +90,44 @@ func (h *UserHandler) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, loginResponse{User: user, Token: token})
+}
+
+func (h *UserHandler) blockUser(w http.ResponseWriter, r *http.Request) {
+	// Provera autentifikacije
+	tokenString := r.Header.Get("Authorization")
+	if tokenString == "" {
+		respondWithError(w, http.StatusUnauthorized, "Missing authorization token")
+		return
+	}
+
+	// Pretpostavka: Token je u formatu "Bearer <token>"
+	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+	claims, err := h.service.ParseToken(tokenString)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid token")
+		return
+	}
+
+	role, ok := claims["role"].(string)
+	if !ok || role != string(model.RoleAdmin) {
+		respondWithError(w, http.StatusForbidden, "Only admins can block users")
+		return
+	}
+
+	vars := mux.Vars(r)
+	userIDStr := vars["id"]
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	if err := h.service.BlockUser(r.Context(), userID); err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, map[string]string{"message": "User blocked successfully"})
 }
 
 func handleServiceError(w http.ResponseWriter, err error) {
