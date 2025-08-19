@@ -23,7 +23,9 @@ func NewUserHandler(service *service.UserService) *UserHandler {
 func (h *UserHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/register", h.register).Methods("POST")
 	router.HandleFunc("/login", h.login).Methods("POST")
-	router.HandleFunc("/block-user/{id}", h.blockUser).Methods("POST") 
+	router.HandleFunc("/block-user/{id}", h.blockUser).Methods("POST")
+	router.HandleFunc("/users", h.GetAllUsers).Methods("GET")
+
 
 }
 
@@ -93,14 +95,12 @@ func (h *UserHandler) login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) blockUser(w http.ResponseWriter, r *http.Request) {
-	// Provera autentifikacije
 	tokenString := r.Header.Get("Authorization")
 	if tokenString == "" {
 		respondWithError(w, http.StatusUnauthorized, "Missing authorization token")
 		return
 	}
 
-	// Pretpostavka: Token je u formatu "Bearer <token>"
 	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 	claims, err := h.service.ParseToken(tokenString)
 	if err != nil {
@@ -128,6 +128,38 @@ func (h *UserHandler) blockUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, map[string]string{"message": "User blocked successfully"})
+}
+
+func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
+	tokenString := r.Header.Get("Authorization")
+	if tokenString == "" {
+		respondWithError(w, http.StatusUnauthorized, "Missing authorization token")
+		return
+	}
+
+	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+
+
+	claims, err := h.service.ParseToken(tokenString)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid or expired token")
+		return
+	}
+
+	role, ok := claims["role"].(string)
+	if !ok || role != string(model.RoleAdmin) {
+		respondWithError(w, http.StatusForbidden, "Forbidden: Administrator access required")
+		return
+	}
+
+	users, err := h.service.GetAll(r.Context())
+	if err != nil {
+		log.Printf("Error fetching all users: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, users)
 }
 
 func handleServiceError(w http.ResponseWriter, err error) {

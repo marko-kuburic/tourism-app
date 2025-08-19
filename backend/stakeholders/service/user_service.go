@@ -147,3 +147,16 @@ func (s *UserService) BlockUser(ctx context.Context, userID uuid.UUID) error {
 
 	return nil
 }
+
+func (s *UserService) GetAll(ctx context.Context) ([]model.User, error) {
+	users, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range users {
+		users[i].Password = ""
+	}
+
+	return users, nil
+}
