@@ -25,6 +25,7 @@ type User struct {
 	ProfilePicture string    `gorm:"size:255;column:profile_picture"` // Relative path
 	Biography      string    `gorm:"type:text;column:biography"`      // Biography
 	Motto          string    `gorm:"size:255;column:motto"`           // Motto/quote
+	Activated      bool      `gorm:"type:tinyint(1);default:1;column:activated"`
 	CreatedAt      time.Time `gorm:"autoCreateTime"`
 	UpdatedAt      time.Time `gorm:"autoUpdateTime"`
 }

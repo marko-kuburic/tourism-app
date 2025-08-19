@@ -7,6 +7,7 @@ import (
 	"stakeholders/repo"
 	"time"
 
+	"github.com/google/uuid" 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -115,4 +116,34 @@ func (s *UserService) generateJWT(user model.User) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(s.jwtSecret))
+}
+
+func (s *UserService) ParseToken(tokenString string) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(s.jwtSecret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return claims, nil
+	}
+	return nil, errors.New("invalid token")
+}
+
+func (s *UserService) BlockUser(ctx context.Context, userID uuid.UUID) error {
+	var user model.User
+	if err := s.repo.GetByID(ctx, userID, &user); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("user not found")
+		}
+		return err
+	}
+
+	user.Activated = false
+	if err := s.repo.Update(ctx, &user); err != nil {
+		return err
+	}
+
+	return nil
 }
