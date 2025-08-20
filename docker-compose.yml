@@ -15,7 +15,7 @@ services:
       DB_PORT: 3306
       DB_USER: root
       DB_PASSWORD: password
-      DB_NAME: tourist_app
+      DB_NAME: tourism
       JWT_SECRET: JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0=
     restart: unless-stopped
 
@@ -23,7 +23,7 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: tourist_app
+      MYSQL_DATABASE: tourism
     volumes:
       - mysql_data:/var/lib/mysql
       - ./backend/stakeholders/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -34,5 +34,33 @@ services:
       retries: 20
     command: --default-authentication-plugin=mysql_native_password
 
+  mongodb:
+    image: mongo:6
+    container_name: tourism-app-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand({ ping: 1 })"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  blog:
+    build:
+      context: ./backend/blog
+      dockerfile: Dockerfile
+    environment:
+      MONGO_URI: "mongodb://mongodb:27017"
+      MONGO_DB: "tourism"
+      MONGO_COLLECTION: "blogs"
+      JWT_SECRET: "JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0="
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "8082:8080"
 volumes:
+  mongo_data:
   mysql_data:
