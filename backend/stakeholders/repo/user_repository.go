@@ -92,3 +92,12 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID, user *model.
 func (r *UserRepository) Update(ctx context.Context, user *model.User) error {
 	return r.db.WithContext(ctx).Save(user).Error
 }
+
+func (r *UserRepository) GetAll(ctx context.Context) ([]model.User, error) {
+	var users []model.User
+	result := r.db.WithContext(ctx).Find(&users)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return users, nil
+}

@@ -147,3 +147,29 @@ func (s *UserService) BlockUser(ctx context.Context, userID uuid.UUID) error {
 
 	return nil
 }
+
+func (s *UserService) GetAll(ctx context.Context) ([]model.User, error) {
+	users, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range users {
+		users[i].Password = ""
+	}
+
+	return users, nil
+}
+
+func (s *UserService) GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
+
+	var user model.User
+
+	err := s.repo.GetByID(ctx, id, &user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
