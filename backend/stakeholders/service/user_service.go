@@ -160,3 +160,16 @@ func (s *UserService) GetAll(ctx context.Context) ([]model.User, error) {
 
 	return users, nil
 }
+
+func (s *UserService) GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
+
+	var user model.User
+
+	err := s.repo.GetByID(ctx, id, &user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+

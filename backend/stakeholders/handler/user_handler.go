@@ -7,9 +7,13 @@ import (
 	"stakeholders/model"
 	"stakeholders/service"
 	"strings"
+	"errors" 
+
 
 	"github.com/google/uuid" 
 	"github.com/gorilla/mux"
+	"gorm.io/gorm" 
+
 )
 
 type UserHandler struct {
@@ -24,7 +28,7 @@ func (h *UserHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/register", h.register).Methods("POST")
 	router.HandleFunc("/login", h.login).Methods("POST")
 	router.HandleFunc("/block-user/{id}", h.blockUser).Methods("POST")
-	router.HandleFunc("/users", h.GetAllUsers).Methods("GET")
+	router.HandleFunc("/users", h.getAllUsers).Methods("GET")
 
 
 }
@@ -94,20 +98,21 @@ func (h *UserHandler) login(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, loginResponse{User: user, Token: token})
 }
 
+
+
 func (h *UserHandler) blockUser(w http.ResponseWriter, r *http.Request) {
+	
 	tokenString := r.Header.Get("Authorization")
 	if tokenString == "" {
 		respondWithError(w, http.StatusUnauthorized, "Missing authorization token")
 		return
 	}
-
 	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 	claims, err := h.service.ParseToken(tokenString)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Invalid token")
 		return
 	}
-
 	role, ok := claims["role"].(string)
 	if !ok || role != string(model.RoleAdmin) {
 		respondWithError(w, http.StatusForbidden, "Only admins can block users")
@@ -115,14 +120,43 @@ func (h *UserHandler) blockUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	userIDStr := vars["id"]
-	userID, err := uuid.Parse(userIDStr)
+	userIDToBlockStr := vars["id"]
+	userIDToBlock, err := uuid.Parse(userIDToBlockStr)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+		respondWithError(w, http.StatusBadRequest, "Invalid user ID format in URL")
 		return
 	}
 
-	if err := h.service.BlockUser(r.Context(), userID); err != nil {
+	adminIDStr, _ := claims["user_id"].(string)
+	adminID, _ := uuid.Parse(adminIDStr)
+
+
+	if adminID == userIDToBlock {
+		respondWithError(w, http.StatusBadRequest, "Administrator cannot block themselves")
+		return
+	}
+
+	userToBlock, err := h.service.GetUserByID(r.Context(), userIDToBlock)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			respondWithError(w, http.StatusNotFound, "User with the given ID was not found")
+		} else {
+			respondWithError(w, http.StatusInternalServerError, "Error while checking user existence")
+		}
+		return
+	}
+
+	/*if userToBlock.Role == model.RoleAdmin {
+		respondWithError(w, http.StatusForbidden, "Cannot block another administrator")
+		return
+	}*/
+
+	if !userToBlock.Activated {
+		respondWithError(w, http.StatusConflict, "User is already blocked")
+		return
+	}
+
+	if err := h.service.BlockUser(r.Context(), userIDToBlock); err != nil {
 		handleServiceError(w, err)
 		return
 	}
@@ -130,7 +164,7 @@ func (h *UserHandler) blockUser(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, map[string]string{"message": "User blocked successfully"})
 }
 
-func (h *UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) getAllUsers(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.Header.Get("Authorization")
 	if tokenString == "" {
 		respondWithError(w, http.StatusUnauthorized, "Missing authorization token")
