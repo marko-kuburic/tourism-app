@@ -65,7 +65,6 @@ func (u *User) Validate() error {
 	return nil
 }
 
-// DTO koji vraćaš iz /me
 type ProfileDTO struct {
 	ID             string `json:"id"`
 	Username       string `json:"username"`

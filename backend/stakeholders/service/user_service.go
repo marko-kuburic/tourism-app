@@ -10,7 +10,6 @@ import (
 	"stakeholders/model"
 	"stakeholders/repo"
 
-	"github.com/google/uuid" 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -18,7 +17,7 @@ import (
 )
 
 type UserService struct {
-	repo      *repo.UserRepository // ostavljeno kako već koristite u timu
+	repo      *repo.UserRepository
 	jwtSecret string
 }
 
@@ -37,7 +36,6 @@ type LoginRequest struct {
 	Password string
 }
 
-// 🔹 NEW: DTO za parcijalnu izmenu profila
 type UpdateMeRequest struct {
 	FirstName      *string `json:"first_name"`
 	LastName       *string `json:"last_name"`
@@ -131,7 +129,6 @@ func (s *UserService) generateJWT(user model.User) (string, error) {
 	return token.SignedString([]byte(s.jwtSecret))
 }
 
-// 🔹 NEW: Vrati profil ulogovanog korisnika
 func (s *UserService) GetMe(ctx context.Context, userID uuid.UUID) (model.ProfileDTO, error) {
 	var u model.User
 	if err := s.repo.GetByID(ctx, &u, userID); err != nil {
@@ -140,9 +137,7 @@ func (s *UserService) GetMe(ctx context.Context, userID uuid.UUID) (model.Profil
 	return u.ToProfileDTO(), nil
 }
 
-// 🔹 NEW: Parcijalna izmena sopstvenog profila
 func (s *UserService) UpdateMe(ctx context.Context, userID uuid.UUID, req *UpdateMeRequest) (model.ProfileDTO, error) {
-	// jednostavna validacija unosa
 	if req.ProfilePicture != nil && strings.TrimSpace(*req.ProfilePicture) != "" {
 		if _, err := url.ParseRequestURI(*req.ProfilePicture); err != nil {
 			return model.ProfileDTO{}, errors.New("profile_picture must be a valid URL")
@@ -152,7 +147,6 @@ func (s *UserService) UpdateMe(ctx context.Context, userID uuid.UUID, req *Updat
 		return model.ProfileDTO{}, errors.New("motto max length is 255")
 	}
 
-	// samo polja koja su zaista poslata (pointer != nil)
 	fields := map[string]any{}
 	if req.FirstName != nil {
 		fields["first_name"] = strings.TrimSpace(*req.FirstName)
@@ -194,7 +188,7 @@ func (s *UserService) ParseToken(tokenString string) (jwt.MapClaims, error) {
 
 func (s *UserService) BlockUser(ctx context.Context, userID uuid.UUID) error {
 	var user model.User
-	if err := s.repo.GetByID(ctx, userID, &user); err != nil {
+	if err := s.repo.GetByID(ctx, &user, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("user not found")
 		}
@@ -226,7 +220,7 @@ func (s *UserService) GetUserByID(ctx context.Context, id uuid.UUID) (*model.Use
 
 	var user model.User
 
-	err := s.repo.GetByID(ctx, id, &user)
+	err := s.repo.GetByID(ctx, &user, id)
 	if err != nil {
 		return nil, err
 	}

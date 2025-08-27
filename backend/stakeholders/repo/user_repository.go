@@ -45,7 +45,6 @@ func isDuplicateEntryError(err error) bool {
 		return false
 	}
 
-	// MySQL error format: "Error 1062 (23000): Duplicate entry ..."
 	return strings.Contains(err.Error(), "Error 1062") ||
 		strings.Contains(err.Error(), "Duplicate entry")
 }
@@ -89,7 +88,6 @@ func (r *UserRepository) GetByID(ctx context.Context, user *model.User, id uuid.
 		First(user).Error
 }
 
-// ⬇️ NEW: whitelist parcijalnih polja za ažuriranje
 func sanitizeUpdateFields(fields map[string]any) map[string]any {
 	allowed := map[string]bool{
 		"first_name":      true,
@@ -110,7 +108,7 @@ func sanitizeUpdateFields(fields map[string]any) map[string]any {
 func (r *UserRepository) UpdateFields(ctx context.Context, id uuid.UUID, fields map[string]any) error {
 	safe := sanitizeUpdateFields(fields)
 	if len(safe) == 0 {
-		return nil // nothing to update
+		return nil
 	}
 	tx := r.db.WithContext(ctx).Model(&model.User{}).Where("id = ?", id).Updates(safe)
 	if tx.Error != nil {
