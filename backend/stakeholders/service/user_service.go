@@ -10,6 +10,7 @@ import (
 	"stakeholders/model"
 	"stakeholders/repo"
 
+	"github.com/google/uuid" 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -177,3 +178,59 @@ func (s *UserService) UpdateMe(ctx context.Context, userID uuid.UUID, req *Updat
 
 	return s.GetMe(ctx, userID)
 }
+
+func (s *UserService) ParseToken(tokenString string) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(s.jwtSecret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return claims, nil
+	}
+	return nil, errors.New("invalid token")
+}
+
+func (s *UserService) BlockUser(ctx context.Context, userID uuid.UUID) error {
+	var user model.User
+	if err := s.repo.GetByID(ctx, userID, &user); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("user not found")
+		}
+		return err
+	}
+
+	user.Activated = false
+	if err := s.repo.Update(ctx, &user); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *UserService) GetAll(ctx context.Context) ([]model.User, error) {
+	users, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range users {
+		users[i].Password = ""
+	}
+
+	return users, nil
+}
+
+func (s *UserService) GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
+
+	var user model.User
+
+	err := s.repo.GetByID(ctx, id, &user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+

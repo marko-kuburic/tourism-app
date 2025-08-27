@@ -83,7 +83,6 @@ func (r *UserRepository) EmailExists(ctx context.Context, email string) (bool, e
 	return count > 0, err
 }
 
-// ⬇️ NEW: dohvat po ID-u
 func (r *UserRepository) GetByID(ctx context.Context, user *model.User, id uuid.UUID) error {
 	return r.db.WithContext(ctx).
 		Where("id = ?", id).
@@ -121,4 +120,17 @@ func (r *UserRepository) UpdateFields(ctx context.Context, id uuid.UUID, fields 
 		return gorm.ErrRecordNotFound
 	}
 	return nil
+}
+
+func (r *UserRepository) Update(ctx context.Context, user *model.User) error {
+	return r.db.WithContext(ctx).Save(user).Error
+}
+
+func (r *UserRepository) GetAll(ctx context.Context) ([]model.User, error) {
+	var users []model.User
+	result := r.db.WithContext(ctx).Find(&users)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return users, nil
 }

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   profile_picture VARCHAR(512) NULL,
   biography       TEXT NULL,
   motto           VARCHAR(255) NULL,
+  activated       TINYINT(1) DEFAULT 1,
   created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

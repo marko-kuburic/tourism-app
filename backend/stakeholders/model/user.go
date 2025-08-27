@@ -17,6 +17,7 @@ const (
 )
 
 type User struct {
+
 	ID             uuid.UUID `json:"id" gorm:"type:char(36);primaryKey"`
 	Username       string    `json:"username" gorm:"size:25;not null;uniqueIndex"`
 	Password       string    `json:"-" gorm:"size:255;not null;column:user_password"`
@@ -28,7 +29,7 @@ type User struct {
 	ProfilePicture string    `json:"profile_picture" gorm:"size:512;column:profile_picture"`
 	Biography      string    `json:"biography" gorm:"type:text;column:biography"`
 	Motto          string    `json:"motto" gorm:"size:255;column:motto"`
-
+  Activated      bool      `gorm:"type:tinyint(1);default:1;column:activated"`
 	CreatedAt      time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt      time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
