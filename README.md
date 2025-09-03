@@ -13,8 +13,13 @@ Before you begin, make sure you have:
 ```
 tourism-app/
 ├── backend/
-│   └── stakeholders/
+│   ├── stakeholders/          # User management service
+│   │   └── Dockerfile
+│   └── blog/                  # Blog service
 │       └── Dockerfile
+├── frontend/                  # Auth UI (React + Vite)
+│   ├── src/modules/auth/      # Login/Register/Profile pages
+│   └── Dockerfile
 ├── docker-compose.yml
 └── README.md
 ```
@@ -36,13 +41,39 @@ docker-compose up --build
 ```
 ### 🌐 Access the App
 
-Backend API: http://localhost:8081
+**Frontend (Auth UI):** http://localhost:3000
+- Login/Register pages
+- User profile management
+- Isolated React app for authentication
 
-MySQL: port 3306 (internal)
+**Backend APIs:**
+- Stakeholders (User management): http://localhost:8081
+- Blog service: http://localhost:8082
+
+**Databases:**
+- MySQL: port 3306 (internal)
+- MongoDB: port 27017 (internal)
 
 ### 🛑 Stopping the App
 
 ```bash
 docker-compose down
 ```
+
+### 🚀 Development
+
+**Frontend Development (Optional):**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+- Runs on http://localhost:5173
+- Hot reload enabled
+- Uses Vite proxy to backend
+
+**Backend Development:**
+- Stakeholders service: Go + MySQL
+- Blog service: Go + MongoDB
+- Both services include JWT authentication
 

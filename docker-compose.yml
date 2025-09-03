@@ -43,7 +43,7 @@ services:
       - mongo_data:/data/db
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.runCommand({ ping: 1 })"]
-      interval: 5s
+      interval: 500s
       timeout: 5s
       retries: 20
 
@@ -61,6 +61,19 @@ services:
         condition: service_healthy
     ports:
       - "8082:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:8081
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_started
+
 volumes:
   mongo_data:
   mysql_data:
