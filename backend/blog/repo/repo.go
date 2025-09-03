@@ -66,78 +66,100 @@ func (r *BlogRepo) EnsureIndexes(ctx context.Context) error {
 	// --- Comments ---
 
 
-	func (r *BlogRepo) AddComment(ctx context.Context, blogID string, c model.Comment) error {
+func (r *BlogRepo) AddComment(ctx context.Context, blogID string, c model.Comment) error {
 	res, err := r.col.UpdateByID(ctx, blogID, bson.M{"$push": bson.M{"comments": c}})
-	if err != nil { return err }
-	if res.MatchedCount == 0 { return mongo.ErrNoDocuments }
-	return nil
+	if err != nil { 
+		return err 
 	}
+	if res.MatchedCount == 0 { 
+		return mongo.ErrNoDocuments 
+	}
+	return nil
+}
 
 
-	func (r *BlogRepo) UpdateComment(ctx context.Context, blogID, commentID, authorID, newText string, now time.Time) error {
+func (r *BlogRepo) UpdateComment(ctx context.Context, blogID, commentID, authorID, newText string, now time.Time) error {
 	filter := bson.M{
-	"_id": blogID,
-	"comments": bson.M{"$elemMatch": bson.M{"id": commentID, "author_id": authorID}},
+		"_id": blogID,
+		"comments": bson.M{"$elemMatch": bson.M{"id": commentID, "author_id": authorID}},
 	}
 	update := bson.M{
-	"$set": bson.M{
-	"comments.$.text": newText,
-	"comments.$.updated_at": now,
-	},
+		"$set": bson.M{
+			"comments.$.text": newText,
+			"comments.$.updated_at": now,
+		},
 	}
 	res, err := r.col.UpdateOne(ctx, filter, update)
-	if err != nil { return err }
-	if res.MatchedCount == 0 { return errors.New("comment not found or not owned by user") }
-	return nil
+	if err != nil { 
+		return err 
 	}
+	if res.MatchedCount == 0 { 
+		return errors.New("comment not found or not owned by user") 
+	}
+	return nil
+}
 
 
-	func (r *BlogRepo) DeleteComment(ctx context.Context, blogID, commentID, authorID string) error {
+func (r *BlogRepo) DeleteComment(ctx context.Context, blogID, commentID, authorID string) error {
 	filter := bson.M{ "_id": blogID }
 	update := bson.M{ "$pull": bson.M{ "comments": bson.M{ "id": commentID, "author_id": authorID } } }
 	res, err := r.col.UpdateOne(ctx, filter, update)
-	if err != nil { return err }
-	if res.ModifiedCount == 0 { return errors.New("comment not found or not owned by user") }
-	return nil
+	if err != nil { 
+		return err 
 	}
+	if res.ModifiedCount == 0 { 
+		return errors.New("comment not found or not owned by user") 
+	}
+	return nil
+}
 
 
-	func (r *BlogRepo) ListComments(ctx context.Context, blogID string, limit int64) ([]model.Comment, error) {
+func (r *BlogRepo) ListComments(ctx context.Context, blogID string, limit int64) ([]model.Comment, error) {
 	var b model.Blog
 	err := r.col.FindOne(ctx, bson.M{"_id": blogID}, options.FindOne().SetProjection(bson.M{"comments": 1, "_id": 0})).Decode(&b)
-	if err != nil { return nil, err }
+	if err != nil { 
+		return nil, err 
+	}
 	comments := b.Comments
 	if limit > 0 && int64(len(comments)) > limit {
 		comments = comments[:limit]
 	}
 	return comments, nil
-	}
+}
 
-	// --- Likes ---
+// --- Likes ---
 
 
 func (r *BlogRepo) AddLike(ctx context.Context, blogID, userID string) (added bool, err error) {
-res, err := r.col.UpdateByID(ctx, blogID, bson.M{"$addToSet": bson.M{"likes": userID}})
-if err != nil { return false, err }
-if res.MatchedCount == 0 { return false, mongo.ErrNoDocuments }
-return true, nil
+	res, err := r.col.UpdateByID(ctx, blogID, bson.M{"$addToSet": bson.M{"likes": userID}})
+	if err != nil { 
+		return false, err 
+	}
+	if res.MatchedCount == 0 { 
+		return false, mongo.ErrNoDocuments 
+	}
+	return true, nil
 }
 
 
 func (r *BlogRepo) RemoveLike(ctx context.Context, blogID, userID string) error {
-res, err := r.col.UpdateByID(ctx, blogID, bson.M{"$pull": bson.M{"likes": userID}})
-if err != nil { return err }
-if res.MatchedCount == 0 { return mongo.ErrNoDocuments }
-return nil
+	res, err := r.col.UpdateByID(ctx, blogID, bson.M{"$pull": bson.M{"likes": userID}})
+	if err != nil { 
+		return err 
+	}
+	if res.MatchedCount == 0 { 
+		return mongo.ErrNoDocuments 
+	}
+	return nil
 }
 
 
 func (r *BlogRepo) CountLikes(ctx context.Context, blogID string) (int, error) {
-var b model.Blog
-if err := r.col.FindOne(ctx, bson.M{"_id": blogID}, options.FindOne().SetProjection(bson.M{"likes":1,"_id":0})).Decode(&b); err != nil {
-return 0, err
-}
-return len(b.Likes), nil
+	var b model.Blog
+	if err := r.col.FindOne(ctx, bson.M{"_id": blogID}, options.FindOne().SetProjection(bson.M{"likes":1,"_id":0})).Decode(&b); err != nil {
+		return 0, err
+	}
+	return len(b.Likes), nil
 }
 
 

@@ -17,9 +17,9 @@ type Blog struct {
 
 
 type Comment struct {
-ID string `json:"id" bson:"id"`
-AuthorID string `json:"author_id" bson:"author_id"`
-Text string `json:"text" bson:"text"`
-CreatedAt time.Time `json:"created_at" bson:"created_at"`
-UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
+	ID string `json:"id" bson:"id"`
+	AuthorID string `json:"author_id" bson:"author_id"`
+	Text string `json:"text" bson:"text"`
+	CreatedAt time.Time `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
 }

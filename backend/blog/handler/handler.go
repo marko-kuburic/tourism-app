@@ -206,68 +206,74 @@ Text string `json:"text"`
 
 
 func (h *BlogHandler) addComment(w http.ResponseWriter, r *http.Request) {
-id := mux.Vars(r)["id"]
-uid := r.Context().Value(userIDKey).(string)
-var in commentReq
-if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-http.Error(w, err.Error(), http.StatusBadRequest); return
-}
-c, err := h.svc.AddComment(r.Context(), id, uid, in.Text)
-if err != nil { http.Error(w, err.Error(), http.StatusBadRequest); return }
-writeJSON(w, http.StatusCreated, c)
+	id := mux.Vars(r)["id"]
+	uid := r.Context().Value(userIDKey).(string)
+	var in commentReq
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest); return
+	}
+	c, err := h.svc.AddComment(r.Context(), id, uid, in.Text)
+	if err != nil { 
+		http.Error(w, err.Error(), http.StatusBadRequest); return 
+	}
+	writeJSON(w, http.StatusCreated, c)
 }
 
 
 func (h *BlogHandler) listComments(w http.ResponseWriter, r *http.Request) {
-id := mux.Vars(r)["id"]
-out, err := h.svc.ListComments(r.Context(), id, 100)
-if err != nil { http.Error(w, err.Error(), http.StatusNotFound); return }
-writeJSON(w, http.StatusOK, out)
+	id := mux.Vars(r)["id"]
+	out, err := h.svc.ListComments(r.Context(), id, 100)
+	if err != nil { 
+		http.Error(w, err.Error(), http.StatusNotFound); return
+    }
+	writeJSON(w, http.StatusOK, out)
 }
 
 
 func (h *BlogHandler) updateComment(w http.ResponseWriter, r *http.Request) {
-id := mux.Vars(r)["id"]
-cid := mux.Vars(r)["cid"]
-uid := r.Context().Value(userIDKey).(string)
-var in commentReq
-if err := json.NewDecoder(r.Body).Decode(&in); err != nil { http.Error(w, err.Error(), http.StatusBadRequest); return }
-if err := h.svc.UpdateComment(r.Context(), id, cid, uid, in.Text); err != nil {
-http.Error(w, err.Error(), http.StatusBadRequest); return
-}
-w.WriteHeader(http.StatusNoContent)
+	id := mux.Vars(r)["id"]
+	cid := mux.Vars(r)["cid"]
+	uid := r.Context().Value(userIDKey).(string)
+	var in commentReq
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil { 
+		http.Error(w, err.Error(), http.StatusBadRequest); return 
+	}
+	if err := h.svc.UpdateComment(r.Context(), id, cid, uid, in.Text); err != nil {
+	http.Error(w, err.Error(), http.StatusBadRequest); return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 
 func (h *BlogHandler) deleteComment(w http.ResponseWriter, r *http.Request) {
-id := mux.Vars(r)["id"]
-cid := mux.Vars(r)["cid"]
-uid := r.Context().Value(userIDKey).(string)
-if err := h.svc.DeleteComment(r.Context(), id, cid, uid); err != nil {
-http.Error(w, err.Error(), http.StatusBadRequest); return
-}
-w.WriteHeader(http.StatusNoContent)
+	id := mux.Vars(r)["id"]
+	cid := mux.Vars(r)["cid"]
+	uid := r.Context().Value(userIDKey).(string)
+	if err := h.svc.DeleteComment(r.Context(), id, cid, uid); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest); return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 
 // likes
 func (h *BlogHandler) like(w http.ResponseWriter, r *http.Request) {
-id := mux.Vars(r)["id"]
-uid := r.Context().Value(userIDKey).(string)
-if err := h.svc.Like(r.Context(), id, uid); err != nil {
-http.Error(w, err.Error(), http.StatusBadRequest); return
-}
-w.WriteHeader(http.StatusNoContent)
+	id := mux.Vars(r)["id"]
+	uid := r.Context().Value(userIDKey).(string)
+	if err := h.svc.Like(r.Context(), id, uid); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest); return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 
 func (h *BlogHandler) unlike(w http.ResponseWriter, r *http.Request) {
-id := mux.Vars(r)["id"]
-uid := r.Context().Value(userIDKey).(string)
-if err := h.svc.Unlike(r.Context(), id, uid); err != nil {
-http.Error(w, err.Error(), http.StatusBadRequest); return
-}
-w.WriteHeader(http.StatusNoContent)
+	id := mux.Vars(r)["id"]
+	uid := r.Context().Value(userIDKey).(string)
+	if err := h.svc.Unlike(r.Context(), id, uid); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest); return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 
