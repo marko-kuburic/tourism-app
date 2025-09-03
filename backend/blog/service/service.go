@@ -41,6 +41,8 @@ func (s *BlogService) Create(ctx context.Context, authorID string, dto CreateBlo
 		DescriptionHTML: buf.String(),
 		Images:          filterNonEmpty(dto.Images),
 		CreatedAt:       time.Now(),
+		Likes: []string{},
+		Comments: []model.Comment{},
 	}
 
 	if err := s.r.Insert(ctx, b); err != nil {
@@ -62,3 +64,74 @@ func filterNonEmpty(in []string) []string {
 	}
 	return out
 }
+
+
+
+
+
+// Comments
+func (s *BlogService) AddComment(ctx context.Context, blogID, authorID, text string) (model.Comment, error) {
+	text = strings.TrimSpace(text)
+	if text == "" { 
+		return model.Comment{}, errors.New("text is required")
+	}
+	c := model.Comment{
+		ID: uuid.NewString(), AuthorID: authorID, Text: text,
+		CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
+	}
+	if err := s.r.AddComment(ctx, blogID, c); err != nil { 
+		return model.Comment{}, err 
+	}
+	return c, nil
+}
+
+
+func (s *BlogService) UpdateComment(ctx context.Context, blogID, commentID, authorID, newText string) error {
+	newText = strings.TrimSpace(newText)
+	if newText == "" { 
+		return errors.New("text is required") 
+	}
+	return s.r.UpdateComment(ctx, blogID, commentID, authorID, newText, time.Now().UTC())
+}
+
+
+func (s *BlogService) DeleteComment(ctx context.Context, blogID, commentID, authorID string) error {
+	return s.r.DeleteComment(ctx, blogID, commentID, authorID)
+}
+
+
+func (s *BlogService) ListComments(ctx context.Context, blogID string, limit int64) ([]model.Comment, error) {
+	return s.r.ListComments(ctx, blogID, limit)
+}
+
+
+// Likes
+func (s *BlogService) Like(ctx context.Context, blogID, userID string) error {
+	_, err := s.r.AddLike(ctx, blogID, userID)
+	return err
+}
+
+
+func (s *BlogService) Unlike(ctx context.Context, blogID, userID string) error {
+	return s.r.RemoveLike(ctx, blogID, userID)
+}
+
+
+func (s *BlogService) CountLikes(ctx context.Context, blogID string) (int, error) {
+	return s.r.CountLikes(ctx, blogID)
+}
+
+
+// helpers
+func mdToHTML(md string) (string, error) {
+	var buf bytes.Buffer
+	if err := goldmark.Convert([]byte(md), &buf); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+
+
+
+

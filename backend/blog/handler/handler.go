@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"os"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
@@ -25,11 +26,24 @@ func (h *BlogHandler) RegisterRoutes(r *mux.Router) {
 	// Preflight (OPTIONS) za iste rute
 	r.HandleFunc("/blogs", h.options).Methods(http.MethodOptions)
 	r.HandleFunc("/blogs/{id}", h.options).Methods(http.MethodOptions)
+	r.HandleFunc("/blogs/{id}/comments", h.options).Methods(http.MethodOptions)
+	r.HandleFunc("/blogs/{id}/comments/{cid}", h.options).Methods(http.MethodOptions)
+	r.HandleFunc("/blogs/{id}/like", h.options).Methods(http.MethodOptions)
 
 	// Zaštićene rute
 	r.HandleFunc("/blogs", h.create).Methods(http.MethodPost)
 	r.HandleFunc("/blogs", h.list).Methods(http.MethodGet)
 	r.HandleFunc("/blogs/{id}", h.get).Methods(http.MethodGet)
+	r.HandleFunc("/blogs/{id}/comments", h.listComments).Methods(http.MethodGet)
+
+
+	// Protected write (JWT)
+	r.HandleFunc("/blogs", h.withAuth(h.create)).Methods(http.MethodPost)
+	r.HandleFunc("/blogs/{id}/comments", h.withAuth(h.addComment)).Methods(http.MethodPost)
+	r.HandleFunc("/blogs/{id}/comments/{cid}", h.withAuth(h.updateComment)).Methods(http.MethodPatch)
+	r.HandleFunc("/blogs/{id}/comments/{cid}", h.withAuth(h.deleteComment)).Methods(http.MethodDelete)
+	r.HandleFunc("/blogs/{id}/like", h.withAuth(h.like)).Methods(http.MethodPost)
+	r.HandleFunc("/blogs/{id}/like", h.withAuth(h.unlike)).Methods(http.MethodDelete)
 }
 
 func (h *BlogHandler) create(w http.ResponseWriter, r *http.Request) {
@@ -50,6 +64,45 @@ func (h *BlogHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusCreated, b)
 }
+
+
+func (h *BlogHandler) withAuth(next func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
+return func(w http.ResponseWriter, r *http.Request) {
+uid, ok := currentUserID(r)
+if !ok {
+http.Error(w, "missing/invalid token", http.StatusUnauthorized)
+return
+}
+ctx := context.WithValue(r.Context(), userIDKey, uid)
+next(w, r.WithContext(ctx))
+}
+}
+
+func currentUserID(r *http.Request) (string, bool) {
+auth := r.Header.Get("Authorization")
+parts := strings.SplitN(auth, " ", 2)
+if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+return "", false
+}
+token := parts[1]
+t, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+// HMAC only
+return []byte(getEnv("JWT_SECRET", "")), nil
+})
+if err != nil || !t.Valid { return "", false }
+claims, ok := t.Claims.(jwt.MapClaims)
+if !ok { return "", false }
+uid, _ := claims["user_id"].(string)
+if strings.TrimSpace(uid) == "" { return "", false }
+return uid, true
+}
+
+
+func getEnv(k, def string) string {
+if v := strings.TrimSpace(os.Getenv(k)); v != "" { return v }
+return def
+}
+
 
 func (h *BlogHandler) list(w http.ResponseWriter, r *http.Request) {
 	var limit int64
@@ -89,6 +142,9 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
+
+
+
 
 // JWT middleware (isti secret kao stakeholders)
 func JWTMiddleware(secret string) mux.MiddlewareFunc {
@@ -139,3 +195,85 @@ func parseUserID(tokenStr, secret string) (string, bool) {
 	}
 	return uid, true
 }
+
+
+
+// comments
+
+type commentReq struct {
+Text string `json:"text"`
+}
+
+
+func (h *BlogHandler) addComment(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	uid := r.Context().Value(userIDKey).(string)
+	var in commentReq
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest); return
+	}
+	c, err := h.svc.AddComment(r.Context(), id, uid, in.Text)
+	if err != nil { 
+		http.Error(w, err.Error(), http.StatusBadRequest); return 
+	}
+	writeJSON(w, http.StatusCreated, c)
+}
+
+
+func (h *BlogHandler) listComments(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	out, err := h.svc.ListComments(r.Context(), id, 100)
+	if err != nil { 
+		http.Error(w, err.Error(), http.StatusNotFound); return
+    }
+	writeJSON(w, http.StatusOK, out)
+}
+
+
+func (h *BlogHandler) updateComment(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	cid := mux.Vars(r)["cid"]
+	uid := r.Context().Value(userIDKey).(string)
+	var in commentReq
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil { 
+		http.Error(w, err.Error(), http.StatusBadRequest); return 
+	}
+	if err := h.svc.UpdateComment(r.Context(), id, cid, uid, in.Text); err != nil {
+	http.Error(w, err.Error(), http.StatusBadRequest); return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+
+func (h *BlogHandler) deleteComment(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	cid := mux.Vars(r)["cid"]
+	uid := r.Context().Value(userIDKey).(string)
+	if err := h.svc.DeleteComment(r.Context(), id, cid, uid); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest); return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+
+// likes
+func (h *BlogHandler) like(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	uid := r.Context().Value(userIDKey).(string)
+	if err := h.svc.Like(r.Context(), id, uid); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest); return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+
+func (h *BlogHandler) unlike(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	uid := r.Context().Value(userIDKey).(string)
+	if err := h.svc.Unlike(r.Context(), id, uid); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest); return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+
