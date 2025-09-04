@@ -1,5 +1,6 @@
 const isDev = import.meta && import.meta.env && import.meta.env.DEV
-const apiBaseUrl = isDev ? '/api' : ((import.meta && import.meta.env && import.meta.env.VITE_API_BASE_URL) || 'http://localhost:8081')
+const apiBaseUrl = (import.meta && import.meta.env && import.meta.env.VITE_API_BASE_URL) || 'http://localhost:8081'
+const followingBaseUrl = (import.meta && import.meta.env && import.meta.env.VITE_FOLLOWING_API_URL) || 'http://localhost:8083'
 
 function getAuthHeaders() {
   const token = localStorage.getItem('auth_token')
@@ -60,6 +61,29 @@ export async function updateProfile(payload) {
     let err = {}
     try { err = await res.json() } catch {}
     throw new Error(err.error || `Failed to update profile (${res.status})`)
+  }
+  return res.json()
+}
+
+export async function getRecommendations() {
+  const token = localStorage.getItem('auth_token')
+  const res = await fetch(`${followingBaseUrl}/recommendations`, {
+    headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+  })
+  if (!res.ok) throw new Error('Failed to load recommendations')
+  return res.json()
+}
+
+export async function followUser(userId) {
+  const token = localStorage.getItem('auth_token')
+  const res = await fetch(`${followingBaseUrl}/follow/${userId}`, {
+    method: 'POST',
+    headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+  })
+  if (!res.ok) {
+    let err = {}
+    try { err = await res.json() } catch {}
+    throw new Error(err.error || 'Failed to follow user')
   }
   return res.json()
 }

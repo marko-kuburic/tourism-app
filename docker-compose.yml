@@ -43,8 +43,9 @@ services:
       - mongo_data:/data/db
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.runCommand({ ping: 1 })"]
-      interval: 500s
+      interval: 5s
       timeout: 5s
+      start_period: 20s
       retries: 20
 
   blog:
@@ -56,20 +57,52 @@ services:
       MONGO_DB: "tourism"
       MONGO_COLLECTION: "blogs"
       JWT_SECRET: "JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0="
+      FOLLOWING_API_URL: "http://following:8083"
     depends_on:
       mongodb:
         condition: service_healthy
     ports:
       - "8082:8080"
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - VITE_API_BASE_URL=http://localhost:8081
+  neo4j:
+    image: neo4j:5
+    environment:
+      NEO4J_AUTH: neo4j/neo4jpassword
     ports:
-      - "3000:80"
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+
+  following:
+    build:
+      context: ./backend/following
+      dockerfile: Dockerfile
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: neo4jpassword
+      STAKEHOLDERS_API_URL: http://backend:8081
+    depends_on:
+      neo4j:
+        condition: service_started
+      backend:
+        condition: service_started
+    ports:
+      - "8083:8083"
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    command: sh -c "npm install && npm run dev -- --port 3000"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8081
+      VITE_FOLLOWING_API_URL: http://localhost:8083
     depends_on:
       backend:
         condition: service_started
@@ -77,3 +110,4 @@ services:
 volumes:
   mongo_data:
   mysql_data:
+  neo4j_data:

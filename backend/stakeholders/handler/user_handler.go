@@ -30,6 +30,9 @@ func (h *UserHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/login", h.login).Methods("POST")
 	router.HandleFunc("/block-user/{id}", h.blockUser).Methods("POST")
 	router.HandleFunc("/users", h.getAllUsers).Methods("GET")
+	// public minimal list of non-admin users for recommendations
+	router.HandleFunc("/users/public", h.getPublicUsers).Methods("GET")
+	router.HandleFunc("/users/{id}", h.getUserByID).Methods("GET")
 }
 
 func (h *UserHandler) RegisterProtectedRoutes(router *mux.Router) {
@@ -231,6 +234,44 @@ func (h *UserHandler) getAllUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, users)
+}
+
+// getPublicUsers returns a minimal list of non-admin users (id and username)
+func (h *UserHandler) getPublicUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := h.service.GetAll(r.Context())
+	if err != nil {
+		log.Printf("Error fetching users: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	// map to minimal DTO and filter non-admin
+	type pub struct { ID string `json:"id"`; Username string `json:"username"`; Role model.Role `json:"role"` }
+	out := make([]pub, 0, len(users))
+	for _, u := range users {
+		if u.Role == model.RoleAdmin { continue }
+		out = append(out, pub{ ID: u.ID.String(), Username: u.Username, Role: u.Role })
+	}
+	respondWithJSON(w, http.StatusOK, out)
+}
+
+func (h *UserHandler) getUserByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+	user, err := h.service.GetUserByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			respondWithError(w, http.StatusNotFound, "User not found")
+			return
+		}
+		handleServiceError(w, err)
+		return
+	}
+	respondWithJSON(w, http.StatusOK, user)
 }
 
 func handleServiceError(w http.ResponseWriter, err error) {
