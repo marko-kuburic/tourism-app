@@ -52,6 +52,34 @@ func (r *BlogRepo) List(ctx context.Context, limit int64) ([]model.Blog, error) 
 	return out, cur.Err()
 }
 
+// ListByAuthors returns blogs authored by any of the provided authorIDs
+func (r *BlogRepo) ListByAuthors(ctx context.Context, authorIDs []string, limit int64) ([]model.Blog, error) {
+    if len(authorIDs) == 0 {
+        return []model.Blog{}, nil
+    }
+    opts := options.Find()
+    if limit > 0 {
+        opts.SetLimit(limit)
+    }
+    opts.SetSort(bson.D{{Key: "created_at", Value: -1}})
+
+    filter := bson.M{"author_id": bson.M{"$in": authorIDs}}
+    cur, err := r.col.Find(ctx, filter, opts)
+    if err != nil {
+        return nil, err
+    }
+    defer cur.Close(ctx)
+
+    var out []model.Blog
+    for cur.Next(ctx) {
+        var b model.Blog
+        if err := cur.Decode(&b); err == nil {
+            out = append(out, b)
+        }
+    }
+    return out, cur.Err()
+}
+
 // kreira indeks na author_id + created_at (za listanje po autoru)
 func (r *BlogRepo) EnsureIndexes(ctx context.Context) error {
 	_, err := r.col.Indexes().CreateMany(ctx, []mongo.IndexModel{

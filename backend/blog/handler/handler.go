@@ -39,6 +39,7 @@ func (h *BlogHandler) RegisterRoutes(r *mux.Router) {
 
 	// Protected write (JWT)
 	r.HandleFunc("/blogs", h.withAuth(h.create)).Methods(http.MethodPost)
+	r.HandleFunc("/blogs/feed", h.withAuth(h.feed)).Methods(http.MethodGet)
 	r.HandleFunc("/blogs/{id}/comments", h.withAuth(h.addComment)).Methods(http.MethodPost)
 	r.HandleFunc("/blogs/{id}/comments/{cid}", h.withAuth(h.updateComment)).Methods(http.MethodPatch)
 	r.HandleFunc("/blogs/{id}/comments/{cid}", h.withAuth(h.deleteComment)).Methods(http.MethodDelete)
@@ -117,6 +118,24 @@ func (h *BlogHandler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, items)
+}
+
+func (h *BlogHandler) feed(w http.ResponseWriter, r *http.Request) {
+    uid, _ := r.Context().Value(userIDKey).(string)
+    var limit int64
+    if q := r.URL.Query().Get("limit"); q != "" {
+        if n, err := strconv.ParseInt(q, 10, 64); err == nil {
+            limit = n
+        }
+    }
+    followingURL := getEnv("FOLLOWING_API_URL", "http://following:8083")
+    auth := r.Header.Get("Authorization")
+    items, err := h.svc.ListFeed(r.Context(), uid, limit, followingURL, auth)
+    if err != nil {
+        http.Error(w, "Server error", http.StatusInternalServerError)
+        return
+    }
+    writeJSON(w, http.StatusOK, items)
 }
 
 func (h *BlogHandler) get(w http.ResponseWriter, r *http.Request) {
