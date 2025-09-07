@@ -88,4 +88,39 @@ export async function followUser(userId) {
   return res.json()
 }
 
+export async function getAllUsers() {
+  const token = localStorage.getItem('auth_token')
+  const res = await fetch(`${apiBaseUrl}/users`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    }
+  })
+  if (!res.ok) {
+    let err = {}
+    try { err = await res.json() } catch {}
+    throw new Error(err.error || `Failed to fetch users (${res.status})`)
+  }
+  return res.json()
+}
+
+export async function blockUser(userId) {
+  const token = localStorage.getItem('auth_token')
+  const res = await fetch(`${apiBaseUrl}/block-user/${userId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    }
+  })
+  if (!res.ok) {
+    let err = {}
+    try { err = await res.json() } catch {}
+    throw new Error(err.error || `Failed to block user (${res.status})`)
+  }
+  return res.json()
+}
+
+
 

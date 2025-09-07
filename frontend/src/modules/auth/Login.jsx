@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { login } from './api.js'
+import { login, getProfile } from './api.js'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -23,9 +23,15 @@ export default function Login() {
       const { token } = await login({ email, password })
       setToken(token)
       try { localStorage.setItem('auth_token', token) } catch {}
-      navigate('/profile')
+
+      const profile = await getProfile()
+      const role = String(profile?.role ?? profile?.Role ?? '')
+        .trim()
+        .toLowerCase()
+
+      navigate(role === 'admin' ? '/admin/users' : '/profile', { replace: true })
     } catch (e) {
-      setError(e.message)
+      setError(e.message || 'Login failed')
     } finally {
       setLoading(false)
     }
@@ -33,13 +39,27 @@ export default function Login() {
 
   return (
     <form onSubmit={onSubmit} className="grid">
-      <input className="input" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} type="email" required />
-      <input className="input" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} type="password" required />
-      <button className="button" disabled={loading} type="submit">{loading ? 'Signing in…' : 'Login'}</button>
+      <input
+        className="input"
+        placeholder="Email"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        type="email"
+        required
+      />
+      <input
+        className="input"
+        placeholder="Password"
+        value={password}
+        onChange={e => setPassword(e.target.value)}
+        type="password"
+        required
+      />
+      <button className="button" disabled={loading} type="submit">
+        {loading ? 'Signing in…' : 'Login'}
+      </button>
       {error && <p className="error">{error}</p>}
       {token && <p className="success">Logged in successfully! Redirecting...</p>}
     </form>
   )
 }
-
-
