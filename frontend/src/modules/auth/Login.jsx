@@ -1,4 +1,3 @@
-// frontend/src/modules/auth/Login.jsx
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login, getProfile } from './api.js'
@@ -21,18 +20,15 @@ export default function Login() {
     setError(null)
     setLoading(true)
     try {
-      // login → token
       const { token } = await login({ email, password })
       setToken(token)
       try { localStorage.setItem('auth_token', token) } catch {}
 
-      // profil → role
       const profile = await getProfile()
       const role = String(profile?.role ?? profile?.Role ?? '')
         .trim()
         .toLowerCase()
 
-      // admin odmah na /admin/users, ostali na /profile
       navigate(role === 'admin' ? '/admin/users' : '/profile', { replace: true })
     } catch (e) {
       setError(e.message || 'Login failed')

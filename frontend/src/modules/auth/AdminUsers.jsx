@@ -1,4 +1,3 @@
-// frontend/src/modules/auth/AdminUsers.jsx
 import { useEffect, useMemo, useState } from 'react'
 import { getProfile, getAllUsers, blockUser } from './api.js'
 import { useNavigate } from 'react-router-dom'
@@ -10,7 +9,6 @@ function toBool(v) {
   return Boolean(v)
 }
 
-// ❶ Normalizuj jednog user-a (izračunaj _activated i _isBlocked)
 function normalizeUser(u) {
   const activatedRaw =
     u.activated ?? u.Activated ?? u.isActive ?? u.is_active ?? u.enabled
@@ -22,7 +20,6 @@ function normalizeUser(u) {
   }
 }
 
-// ❷ Normalizuj listu
 function normalizeUsers(list) {
   return Array.isArray(list) ? list.map(normalizeUser) : []
 }
@@ -73,7 +70,6 @@ export default function AdminUsers() {
   async function onBlock(u) {
     if (!window.confirm(`Block "${u.username}"?`)) return
 
-    // ❸ Optimistički update — i u originalnim poljima i u izračunatim
     const prev = users
     setUsers(list =>
       list.map(x =>
@@ -94,7 +90,7 @@ export default function AdminUsers() {
         await refresh()
       } else {
         setActionMsg(e.message || 'Blocking failed')
-        setUsers(prev) // rollback samo na pravi fail
+        setUsers(prev) 
       }
     }
   }

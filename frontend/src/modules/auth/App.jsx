@@ -17,7 +17,6 @@ export default function App() {
 
   const [myRole, setMyRole] = useState(null)
 
-  // učitaj rolu nakon logina
   useEffect(() => {
     if (!hasToken) {
       setMyRole(null)
@@ -34,7 +33,6 @@ export default function App() {
     })()
   }, [hasToken])
 
-  // ako je admin i sleti na /profile ili /recommendations -> preusmeri na /admin/users
   useEffect(() => {
     if (
       hasToken &&
@@ -55,7 +53,7 @@ export default function App() {
 
   return (
     <div className="auth-wrap">
-      {/* proširi karticu kad je admin */}
+      {}
       <div className={`card ${isAdmin ? 'card-wide' : ''}`}>
         <h2 className="title">Welcome</h2>
 
@@ -71,7 +69,7 @@ export default function App() {
             </>
           ) : (
             <>
-              {/* ADMIN vidi SAMO Users */}
+              {}
               {isAdmin ? (
                 <Link
                   to="/admin/users"
@@ -81,7 +79,7 @@ export default function App() {
                 </Link>
               ) : (
                 <>
-                  {/* OSTALI vide Profile i Recommendations */}
+                  {}
                   <Link
                     to="/profile"
                     aria-current={location.pathname === '/profile' ? 'page' : undefined}
@@ -108,14 +106,14 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
-            {/* rute za ne-admin korisnike */}
+            {}
             <Route path="/profile" element={<Profile />} />
             <Route path="/recommendations" element={<Recommendations />} />
 
-            {/* admin stranica */}
+            {}
             <Route path="/admin/users" element={<AdminUsers />} />
 
-            {/* fallback */}
+            {}
             <Route
               path="*"
               element={
