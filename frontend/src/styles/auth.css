@@ -29,3 +29,97 @@ body{margin:0;background:linear-gradient(135deg,#0b1220, var(--bg));color:var(--
 .profile-actions{display:flex;gap:8px;margin-top:16px}
 textarea.input{min-height:80px;resize:vertical}
 
+
+/* === Admin wide card + layout fixes === */
+.card.card-wide {
+  width: min(1200px, 95vw);   /* šira kartica, ali ne prelazi ekran */
+  max-width: none;            /* ignoriši staro max-width ograničenje */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* kontejner za tabelu – scroll ako baš mora, ali unutar kartice */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* tabela koristi celu širinu kartice */
+.table.table-wide {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;   /* neka kolone rastu po sadržaju */
+}
+
+/* ćelije uredno i bez lomljenja po slovima */
+.table.table-wide th,
+.table.table-wide td {
+  padding: 12px 16px;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;        /* ne lomi tekst u više redova */
+}
+
+/* tanak separator ispod headera i između redova */
+.table.table-wide thead th {
+  border-bottom: 1px solid rgba(255,255,255,0.25);
+}
+.table.table-wide tbody tr + tr td {
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+/* fiksiraj širinu kolone sa dugmadima da ne “prolupa” raspored */
+.table.table-wide th:last-child,
+.table.table-wide td:last-child {
+  width: 140px;               /* po potrebi 160px */
+}
+
+/* na užim ekranima dozvoli prelom teksta da sve ipak stane */
+@media (max-width: 900px) {
+  .table.table-wide th,
+  .table.table-wide td {
+    white-space: normal;
+    word-break: break-word;
+  }
+}
+
+/* badge stilovi */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.badge-ok {
+  background: rgba(0, 200, 120, 0.18);
+  color: #9ff3c9;
+  border: 1px solid rgba(0, 200, 120, 0.35);
+}
+.badge-danger {
+  background: rgba(220, 20, 60, 0.18);
+  color: #ffb3c0;
+  border: 1px solid rgba(220, 20, 60, 0.35);
+}
+
+/* vizuelno “mutiraj” blokirane redove */
+.row-blocked td {
+  opacity: 0.9;
+  /* opcionalno: */
+  /* filter: grayscale(0.15); */
+}
+
+/* (ostali raniji stilovi za table-wide ostaju) */
+.button-danger {
+  background: #b3261e;
+  color: #fff;
+  border: none;
+}
+
+.button-danger:hover {
+  background: #a01f18;
+}
+
+
+
+
