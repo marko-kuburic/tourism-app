@@ -49,7 +49,11 @@ export default function AdminUsers() {
 
         const all = await getAllUsers()
         if (!mounted) return
-        setUsers(normalizeUsers(all))
+        // filtriraj sve koji nisu admini
+        const filtered = all.filter(
+          u => String(u.role ?? u.Role ?? '').toLowerCase() !== 'admin'
+        )
+        setUsers(normalizeUsers(filtered))
       } catch (e) {
         setError(e.message || 'Failed to load data')
       } finally {
@@ -57,14 +61,19 @@ export default function AdminUsers() {
       }
     }
     load()
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+    }
   }, [navigate])
 
   const myId = useMemo(() => me?.id, [me])
 
   async function refresh() {
     const all = await getAllUsers()
-    setUsers(normalizeUsers(all))
+    const filtered = all.filter(
+      u => String(u.role ?? u.Role ?? '').toLowerCase() !== 'admin'
+    )
+    setUsers(normalizeUsers(filtered))
   }
 
   async function onBlock(u) {
@@ -90,7 +99,7 @@ export default function AdminUsers() {
         await refresh()
       } else {
         setActionMsg(e.message || 'Blocking failed')
-        setUsers(prev) 
+        setUsers(prev) // rollback samo na pravi fail
       }
     }
   }
@@ -117,7 +126,7 @@ export default function AdminUsers() {
           </thead>
           <tbody>
             {users.map(u => {
-              const isSelf = myId && (u.id === myId)
+              const isSelf = myId && u.id === myId
               const isBlocked = !!u._isBlocked
               const canBlock = !isSelf && !isBlocked
               const created = u.createdAt ?? u.created_at ?? u.created
@@ -128,9 +137,11 @@ export default function AdminUsers() {
                   <td>{u.email}</td>
                   <td>{u.role ?? u.Role ?? '—'}</td>
                   <td>
-                    {isBlocked
-                      ? <span className="badge badge-danger">Blocked</span>
-                      : <span className="badge badge-ok">Yes</span>}
+                    {isBlocked ? (
+                      <span className="badge badge-danger">Blocked</span>
+                    ) : (
+                      <span className="badge badge-ok">Yes</span>
+                    )}
                   </td>
                   <td>{created ? new Date(created).toLocaleString() : '—'}</td>
                   <td>
@@ -138,7 +149,7 @@ export default function AdminUsers() {
                       <button
                         className="button button-danger"
                         disabled
-                        style={{ cursor:'not-allowed', opacity:.9 }}
+                        style={{ cursor: 'not-allowed', opacity: 0.9 }}
                       >
                         Blocked
                       </button>
@@ -157,7 +168,11 @@ export default function AdminUsers() {
               )
             })}
             {users.length === 0 && (
-              <tr><td colSpan={6} style={{ textAlign: 'center' }}>No users found</td></tr>
+              <tr>
+                <td colSpan={6} style={{ textAlign: 'center' }}>
+                  No users found
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
