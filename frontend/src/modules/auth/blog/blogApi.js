@@ -93,3 +93,31 @@ export async function unlike(blogId) {
   }
   return parseJsonSafe(res); // može biti null
 }
+
+export async function updateComment(blogId, commentId, text) {
+  const res = await fetch(`${blogBaseUrl}/blogs/${encodeURIComponent(blogId)}/comments/${encodeURIComponent(commentId)}`, {
+    method: 'PATCH', // ili PUT ako tako radi backend
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) {
+    let err = {};
+    try { err = await res.json(); } catch {}
+    throw new Error(err.error || `Failed to update comment (${res.status})`);
+  }
+  // mnogi backend-i vraćaju updated komentar; ako ne, vrati minimalno što imaš
+  try { return await res.json(); } catch { return { id: commentId, text }; }
+}
+
+export async function deleteComment(blogId, commentId) {
+  const res = await fetch(`${blogBaseUrl}/blogs/${encodeURIComponent(blogId)}/comments/${encodeURIComponent(commentId)}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    let err = {};
+    try { err = await res.json(); } catch {}
+    throw new Error(err.error || `Failed to delete comment (${res.status})`);
+  }
+  return true;
+}
