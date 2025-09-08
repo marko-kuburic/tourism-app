@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    build: 
+    build:
       context: ./backend/stakeholders
       dockerfile: Dockerfile
     ports:
@@ -16,7 +16,7 @@ services:
       DB_USER: root
       DB_PASSWORD: password
       DB_NAME: tourism
-      JWT_SECRET: JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0=
+      JWT_SECRET: "JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0="
     restart: unless-stopped
 
   mysql:
@@ -51,7 +51,6 @@ services:
   blog:
     build:
       context: ./backend/blog
-      dockerfile: Dockerfile
     environment:
       MONGO_URI: "mongodb://mongodb:27017"
       MONGO_DB: "tourism"
@@ -63,6 +62,37 @@ services:
         condition: service_healthy
     ports:
       - "8082:8080"
+    restart: unless-stopped
+
+  # --- KT2 #10: Tour servis (Java + Spring Boot + MySQL) ---
+  tour-mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: tourdb
+    volumes:
+      - tour_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ppassword"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+    command: --default-authentication-plugin=mysql_native_password
+
+  tour:
+    build:
+      context: ./backend/tour
+      dockerfile: Dockerfile
+    environment:
+      DB_URL: "jdbc:mysql://tour-mysql:3306/tourdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      DB_USER: "root"
+      DB_PASSWORD: "password"
+      JWT_SECRET: JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0=
+    depends_on:
+      tour-mysql:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
 
   neo4j:
     image: neo4j:5
@@ -106,8 +136,10 @@ services:
     depends_on:
       backend:
         condition: service_started
+    restart: unless-stopped
 
 volumes:
   mongo_data:
   mysql_data:
   neo4j_data:
+  tour_mysql_data:
