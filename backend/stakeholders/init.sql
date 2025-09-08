@@ -2,7 +2,7 @@ CREATE DATABASE IF NOT EXISTS tourism CHARACTER SET utf8mb4 COLLATE utf8mb4_unic
 USE tourism;
 
 CREATE TABLE IF NOT EXISTS users (
-  id              CHAR(36) PRIMARY KEY,
+  id              CHAR(36) NOT NULL PRIMARY KEY,
   username        VARCHAR(25) NOT NULL UNIQUE,
   user_password   VARCHAR(255) NOT NULL,
   email           VARCHAR(255) NOT NULL UNIQUE,
