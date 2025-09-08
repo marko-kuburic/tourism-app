@@ -6,6 +6,8 @@ import Register from './Register.jsx'
 import Profile from './Profile.jsx'
 import Recommendations from './Recommendations.jsx'
 import AdminUsers from './AdminUsers.jsx'
+import BlogFeed from './blog/BlogFeed.jsx';
+import BlogDetails from './blog/BlogDetails.jsx';
 
 import { getProfile } from './api.js'
 import '../../styles/auth.css'
@@ -92,6 +94,12 @@ export default function App() {
                   >
                     Recommendations
                   </Link>
+                  <Link
+                      to="/blog"
+                      aria-current={location.pathname.startsWith('/blog') ? 'page' : undefined}
+                    >
+                      Blog
+                    </Link>
                 </>
               )}
 
@@ -109,6 +117,8 @@ export default function App() {
             {}
             <Route path="/profile" element={<Profile />} />
             <Route path="/recommendations" element={<Recommendations />} />
+            <Route path="/blog" element={<BlogFeed />} />
+            <Route path="/blog/:id" element={<BlogDetails />} />
 
             {}
             <Route path="/admin/users" element={<AdminUsers />} />
