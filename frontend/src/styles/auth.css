@@ -9,7 +9,7 @@
 html,body,#root{height:100%}
 body{margin:0;background:linear-gradient(135deg,#0b1220, var(--bg));color:var(--text)}
 .auth-wrap{display:grid;place-items:center;height:100%;padding:24px}
-.card{width:100%;max-width:420px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));
+.card{width:90%;max-width:420px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));
   border:1px solid rgba(255,255,255,0.06);border-radius:14px;backdrop-filter: blur(6px);padding:24px 20px;box-shadow:0 10px 30px rgba(0,0,0,0.25)}
 .title{margin:0 0 16px;font-weight:700;letter-spacing:.3px}
 .tabs{display:flex;gap:12px;margin:0 0 16px}
@@ -108,7 +108,6 @@ textarea.input{min-height:80px;resize:vertical}
 .button-danger:hover {
   background: #a01f18;
 }
-
 
 
 
