@@ -92,7 +92,7 @@ services:
       tour-mysql:
         condition: service_healthy
     ports:
-      - "8083:8083"
+      - "8084:8084"
 
   neo4j:
     image: neo4j:5
