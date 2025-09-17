@@ -6,12 +6,14 @@ import lombok.*;
 
 import java.util.Set;
 
+import jakarta.validation.constraints.*;
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor @Builder
 public class CreateTourRequest {
-    private String name;
-    private String description;
-    private Difficulty difficulty;
-    private Long priceCents;
+    @NotBlank private String name;
+    @NotBlank private String description;
+    @NotNull  private Difficulty difficulty;
+    @NotNull @Min(1) private Long priceCents;
     private Set<String> tags;
 }
