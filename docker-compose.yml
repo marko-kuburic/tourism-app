@@ -90,18 +90,19 @@ services:
       tour-mysql:
         condition: service_healthy
     ports:
-      - "8083:8083"
+      - "8084:8084"
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: http://localhost:8081
+    image: node:20
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: sh -lc "npm ci && npm run dev -- --host --port 3000"
     ports:
       - "3000:3000"
-    command: sh -c "npm install && npm run dev -- --port 3000"
     environment:
+      # Browser calls localhost:8081/8082/8084 via published ports — OK in dev
       VITE_API_BASE_URL: http://localhost:8081
       VITE_FOLLOWING_API_URL: http://localhost:8083
       VITE_BLOG_API_URL: http://localhost:8082
