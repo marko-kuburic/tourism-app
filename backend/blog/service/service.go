@@ -2,8 +2,11 @@ package service
 
 import (
 	"bytes"
+	"encoding/json"
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -54,6 +57,25 @@ func (s *BlogService) Create(ctx context.Context, authorID string, dto CreateBlo
 func (s *BlogService) Get(ctx context.Context, id string) (model.Blog, error)  { return s.r.Get(ctx, id) }
 func (s *BlogService) List(ctx context.Context, limit int64) ([]model.Blog, error) {
 	return s.r.List(ctx, limit)
+}
+
+// ListFeed returns blogs from authors the user follows.
+func (s *BlogService) ListFeed(ctx context.Context, userID string, limit int64, followingSvcURL string, authHeader string) ([]model.Blog, error) {
+    // call following service to get following list
+    if strings.TrimSpace(userID) == "" {
+        return []model.Blog{}, nil
+    }
+    // lightweight http call without adding new deps
+    req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/following/%s", strings.TrimRight(followingSvcURL, "/"), userID), nil)
+    if err != nil { return nil, err }
+    if strings.TrimSpace(authHeader) != "" { req.Header.Set("Authorization", authHeader) }
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil { return nil, err }
+    defer resp.Body.Close()
+    if resp.StatusCode != 200 { return []model.Blog{}, nil }
+    var ids []string
+    if err := json.NewDecoder(resp.Body).Decode(&ids); err != nil { return nil, err }
+    return s.r.ListByAuthors(ctx, ids, limit)
 }
 
 func filterNonEmpty(in []string) []string {
