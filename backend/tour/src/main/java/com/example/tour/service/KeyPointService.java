@@ -51,7 +51,7 @@ public class KeyPointService {
                 .seq(nextSeq)
                 .build();
 
-        return toDto(keyPointRepo.save(kp));
+        return toDto(keyPointRepo.saveAndFlush(kp));
     }
 
     @Transactional
@@ -70,7 +70,7 @@ public class KeyPointService {
         kp.setImageUrl(body.imageUrl());
         if (body.seq() != null) kp.setSeq(body.seq());
 
-        return toDto(keyPointRepo.save(kp));
+        return toDto(keyPointRepo.saveAndFlush(kp));
     }
 
     @Transactional
