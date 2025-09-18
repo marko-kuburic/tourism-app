@@ -17,12 +17,12 @@ import java.util.UUID;
 @NoArgsConstructor @AllArgsConstructor @Builder
 public class Tour {
 
-    @Id
-    @Column(columnDefinition = "BINARY(16)")
-    private UUID id;
+   @Id
+    @Column(length = 36, nullable = false, columnDefinition = "CHAR(36)")
+    private UUID id;   // ⬅ UUID in Java, CHAR(36) in DB
 
-    @Column(name = "author_id", nullable = false, columnDefinition = "BINARY(16)")
-    private UUID authorId;
+    @Column(name = "author_id", length = 36, nullable = false, columnDefinition = "CHAR(36)")
+    private UUID authorId;   // ⬅ UUID in Java, CHAR(36) in DB
 
     @Column(nullable = false)
     private String name;

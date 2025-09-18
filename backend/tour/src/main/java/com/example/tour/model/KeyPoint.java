@@ -20,9 +20,11 @@ public class KeyPoint {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(length = 36, nullable = false, columnDefinition = "CHAR(36)")
     private UUID id;
 
-    @Column(name = "tour_id", nullable = false, columnDefinition = "BINARY(16)")
+    @Column(name = "tour_id", nullable = false,columnDefinition = "char(36)", length = 36)
     private UUID tourId;
 
     @Column(nullable = false, length = 120)
