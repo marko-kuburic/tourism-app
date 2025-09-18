@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 
 import Login from './Login.jsx'
@@ -6,8 +6,10 @@ import Register from './Register.jsx'
 import Profile from './Profile.jsx'
 import Recommendations from './Recommendations.jsx'
 import AdminUsers from './AdminUsers.jsx'
-import BlogFeed from './blog/BlogFeed.jsx';
-import BlogDetails from './blog/BlogDetails.jsx';
+import BlogFeed from './blog/BlogFeed.jsx'
+import BlogDetails from './blog/BlogDetails.jsx'
+import ToursList from '../tours/ToursList.jsx'
+import CreateTour from '../tours/CreateTour.jsx'
 
 import { getProfile } from './api.js'
 import '../../styles/auth.css'
@@ -15,16 +17,14 @@ import '../../styles/auth.css'
 export default function App() {
   const location = useLocation()
   const navigate = useNavigate()
-  const hasToken = !!localStorage.getItem('auth_token')
-
   const [myRole, setMyRole] = useState(null)
 
+  // Recompute token on mount and after login/logout (localStorage event safety)
+  const hasToken = !!localStorage.getItem('auth_token')
+
   useEffect(() => {
-    if (!hasToken) {
-      setMyRole(null)
-      return
-    }
-    ;(async () => {
+    if (!hasToken) { setMyRole(null); return }
+    (async () => {
       try {
         const me = await getProfile()
         const r = (me?.role ?? me?.Role ?? '').toString().toLowerCase()
@@ -36,11 +36,8 @@ export default function App() {
   }, [hasToken])
 
   useEffect(() => {
-    if (
-      hasToken &&
-      myRole === 'admin' &&
-      (location.pathname === '/profile' || location.pathname === '/recommendations')
-    ) {
+    if (hasToken && myRole === 'admin' &&
+        (location.pathname === '/profile' || location.pathname === '/recommendations')) {
       navigate('/admin/users', { replace: true })
     }
   }, [hasToken, myRole, location.pathname, navigate])
@@ -55,75 +52,60 @@ export default function App() {
 
   return (
     <div className="auth-wrap">
-      {}
       <div className={`card ${isAdmin ? 'card-wide' : ''}`}>
-        <h2 className="title">Welcome</h2>
 
-        <nav className="tabs" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        {/* Header row */}
+        <div className="card-header" style={{display:'flex', alignItems:'center', gap:12}}>
+          <h2 className="title" style={{margin:0, lineHeight:1}}>Welcome</h2>
+        </div>
+
+        {/* Nav row */}
+        <nav className="tabs"
+             style={{display:'flex', alignItems:'center', gap:12, marginTop:12}}>
           {!hasToken ? (
             <>
-              <Link to="/login" aria-current={location.pathname === '/login' ? 'page' : undefined}>
-                Login
-              </Link>
-              <Link to="/register" aria-current={location.pathname === '/register' ? 'page' : undefined}>
-                Register
-              </Link>
+              <Nav className="tab" to="/login">Login</Nav>
+              <Nav className="tab" to="/register">Register</Nav>
             </>
           ) : (
             <>
-              {}
               {isAdmin ? (
-                <Link
-                  to="/admin/users"
-                  aria-current={location.pathname.startsWith('/admin/users') ? 'page' : undefined}
-                >
-                  Users
-                </Link>
+                <Nav className="tab" to="/admin/users">Users</Nav>
               ) : (
                 <>
-                  {}
-                  <Link
-                    to="/profile"
-                    aria-current={location.pathname === '/profile' ? 'page' : undefined}
-                  >
-                    Profile
-                  </Link>
-                  <Link
-                    to="/recommendations"
-                    aria-current={location.pathname === '/recommendations' ? 'page' : undefined}
-                  >
-                    Recommendations
-                  </Link>
-                  <Link
-                      to="/blog"
-                      aria-current={location.pathname.startsWith('/blog') ? 'page' : undefined}
-                    >
-                      Blog
-                    </Link>
+                  <Nav className="tab" to="/profile">Profile</Nav>
+                  <Nav className="tab" to="/recommendations">Recommendations</Nav>
+                  <Nav className="tab" to="/blog" end>Blog</Nav>
                 </>
               )}
 
-              <span style={{ flex: 1 }} />
-              <button className="button" onClick={onLogout}>Logout</button>
+              <Nav className="tab" to="/tours" end>Tours</Nav>
+              <Nav className="tab" to="/tours/new">Create Tour</Nav>
+
+              <span style={{marginLeft:'auto'}} />
+              <button className="button" style={{lineHeight:1}} onClick={onLogout}>
+                Logout
+              </button>
             </>
           )}
         </nav>
 
+        {/* Content */}
         <div className="grid">
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
-            {}
             <Route path="/profile" element={<Profile />} />
             <Route path="/recommendations" element={<Recommendations />} />
             <Route path="/blog" element={<BlogFeed />} />
             <Route path="/blog/:id" element={<BlogDetails />} />
 
-            {}
             <Route path="/admin/users" element={<AdminUsers />} />
 
-            {}
+            <Route path="/tours" element={<ToursList />} />
+            <Route path="/tours/new" element={<CreateTour />} />
+
             <Route
               path="*"
               element={
@@ -138,5 +120,20 @@ export default function App() {
         </div>
       </div>
     </div>
+  )
+}
+
+/* Small helper so tabs get an active class and align nicely */
+function Nav({ to, end, className = 'tab', children }) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        `${className} ${isActive ? 'tab--active' : ''}`
+      }
+    >
+      {children}
+    </NavLink>
   )
 }

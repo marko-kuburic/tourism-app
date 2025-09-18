@@ -43,9 +43,8 @@ services:
       - mongo_data:/data/db
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.runCommand({ ping: 1 })"]
-      interval: 5s
+      interval: 30s
       timeout: 5s
-      start_period: 20s
       retries: 20
 
   blog:
@@ -87,22 +86,12 @@ services:
       DB_URL: "jdbc:mysql://tour-mysql:3306/tourdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
       DB_USER: "root"
       DB_PASSWORD: "password"
-      JWT_SECRET: JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0=
+      JWT_SECRET: "JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0="
     depends_on:
       tour-mysql:
         condition: service_healthy
     ports:
       - "8084:8084"
-
-  neo4j:
-    image: neo4j:5
-    environment:
-      NEO4J_AUTH: neo4j/neo4jpassword
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-    volumes:
-      - neo4j_data:/data
 
   following:
     build:
@@ -121,19 +110,30 @@ services:
     ports:
       - "8083:8083"
 
+  neo4j:
+    image: neo4j:5
+    environment:
+      NEO4J_AUTH: neo4j/neo4jpassword
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+
   frontend:
-    image: node:20-alpine
+    image: node:20
     working_dir: /app
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    command: sh -lc "npm ci && npm run dev -- --host --port 3000"
     ports:
       - "3000:3000"
-    command: sh -c "npm install && npm run dev -- --port 3000"
     environment:
       VITE_API_BASE_URL: http://localhost:8081
       VITE_FOLLOWING_API_URL: http://localhost:8083
       VITE_BLOG_API_URL: http://localhost:8082
+      VITE_TOURS_API_URL: http://localhost:8084
     depends_on:
       backend:
         condition: service_started
@@ -142,5 +142,5 @@ services:
 volumes:
   mongo_data:
   mysql_data:
-  neo4j_data:
   tour_mysql_data:
+  neo4j_data:

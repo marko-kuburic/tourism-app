@@ -15,7 +15,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // Registrujemo JwtAuthFilter kao bean da bi Spring mogao da ga injektuje
+    // NOTE: hasAnyRole("GUIDE","ADMIN") očekuje da authorities izgledaju kao ROLE_GUIDE / ROLE_ADMIN
+    // (tj. prefiks "ROLE_"). Ako već šalješ pune authorities bez prefiksa, koristi hasAnyAuthority.
+
     @Bean
     public JwtAuthFilter jwtAuthFilter(JwtService jwtService) {
         return new JwtAuthFilter(jwtService);
@@ -25,20 +27,25 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JwtAuthFilter jwtAuthFilter) throws Exception {
         http
+            // CORS + stateless API
             .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .exceptionHandling(ex -> {
-                // 401 za neautentifikovane; 403 za nedozvoljene
-                // (može i custom entry point ako želiš JSON poruke)
-            })
+
+            // Autorizacija ruta
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/actuator/health", "/error").permitAll()
+                // public list/get (or switch to authenticated() if you prefer)
+                .requestMatchers(HttpMethod.GET, "/tours", "/tours/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/whoami").authenticated()
                 .requestMatchers(HttpMethod.GET, "/tours/mine").hasAnyRole("GUIDE","ADMIN")
                 .requestMatchers(HttpMethod.POST, "/tours").hasAnyRole("GUIDE","ADMIN")
                 .anyRequest().authenticated()
             )
+
+
+            // JWT filter pre UsernamePasswordAuthenticationFilter
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

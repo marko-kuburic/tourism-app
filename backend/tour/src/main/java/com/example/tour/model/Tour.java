@@ -17,7 +17,8 @@ import java.util.UUID;
 @NoArgsConstructor @AllArgsConstructor @Builder
 public class Tour {
 
-   @Id
+
+    @Id
     @Column(length = 36, nullable = false, columnDefinition = "CHAR(36)")
     private UUID id;   // ⬅ UUID in Java, CHAR(36) in DB
 
@@ -27,16 +28,16 @@ public class Tour {
     @Column(nullable = false)
     private String name;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32)
     private Difficulty difficulty;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Status status; // KORISTI top-level enum Status
+    @Column(nullable = false, length = 32)
+    private Status status;
 
     @Column(name = "price_cents", nullable = false)
     private Long priceCents;
@@ -45,13 +46,13 @@ public class Tour {
     @CollectionTable(name = "tour_tags", joinColumns = @JoinColumn(name = "tour_id"))
     @Column(name = "tag", length = 64, nullable = false)
     @Builder.Default
-    private Set<String> tags = new HashSet<>(); // inicijalizovano da ne bude null
+    private Set<String> tags = new HashSet<>();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 }

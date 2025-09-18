@@ -10,26 +10,52 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/tours")
 public class TourController {
 
     private final TourService service;
 
-    @GetMapping("/tours/mine")
+    @GetMapping
+    public ResponseEntity<List<TourResponse>> listAll() {
+        return ResponseEntity.ok(service.listAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<TourResponse> getOne(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.getById(id));
+    }
+
+    @GetMapping("/mine")
     public ResponseEntity<List<TourResponse>> mine(HttpServletRequest req) {
-        // Pretpostavka: JwtAuthFilter je već stavio userId u request attribute
-        UUID userId = (UUID) req.getAttribute("userId");
+        Object uidAttr = req.getAttribute("userId");
+        UUID userId = (uidAttr instanceof UUID)
+            ? (UUID) uidAttr
+            : UUID.fromString(String.valueOf(uidAttr));
+
         return ResponseEntity.ok(service.listMine(userId));
     }
 
-    @PostMapping("/tours")
+    @PostMapping
     public ResponseEntity<TourResponse> create(HttpServletRequest req,
                                                @RequestBody @Valid CreateTourRequest body) {
-        UUID userId = (UUID) req.getAttribute("userId");
-        return ResponseEntity.ok(service.create(userId, body));
+        Object uidAttr = req.getAttribute("userId");
+        UUID userId = (uidAttr instanceof UUID)
+                ? (UUID) uidAttr
+                : UUID.fromString(String.valueOf(uidAttr));
+
+        TourResponse created = service.create(userId, body);
+
+        // ⬇⬇ ključna ispravka: koristimo getter umesto record accessor-a
+        URI location = (created.getId() != null)
+                ? URI.create("/tours/" + created.getId())
+                : URI.create("/tours");
+
+        return ResponseEntity.created(location).body(created);
     }
 }
