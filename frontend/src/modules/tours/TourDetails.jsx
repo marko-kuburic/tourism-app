@@ -25,6 +25,8 @@ export default function TourDetails() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [profile, setProfile] = useState(null);
+  const [routeCoords, setRouteCoords] = useState(null);
+
 
   // forma (sada je DOLE)
   const [form, setForm] = useState({ name: "", description: "", imageUrl: "" });
@@ -127,6 +129,32 @@ export default function TourDetails() {
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
 
+   async function computeStreetRoute(pts, profile = 'foot') {
+  // profile: 'driving', 'foot', 'bicycle'
+  if (!Array.isArray(pts) || pts.length < 2) {
+    setRouteCoords(null);
+    return;
+  }
+  try {
+    const base = import.meta.env.VITE_ROUTER_BASE || 'https://router.project-osrm.org';
+    const coords = pts.map(p => `${p.lng},${p.lat}`).join(';'); // OSRM očekuje lng,lat!
+    const url = `${base}/route/v1/${profile}/${coords}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data?.routes?.[0]?.geometry?.coordinates) {
+      // OSRM vraća [lng,lat] → pretvori u [lat,lng] za Leaflet
+      const ll = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      setRouteCoords(ll);
+    } else {
+      setRouteCoords(null);
+    }
+  } catch (e) {
+    console.warn('OSRM route fail:', e);
+    setRouteCoords(null); // fallback na ravne segmente
+  }
+}
+
+
   const sortedPoints = useMemo(() => {
     return [...points].sort((a,b) => {
       if (a.seq !== b.seq) return (a.seq ?? 0) - (b.seq ?? 0);
@@ -135,6 +163,11 @@ export default function TourDetails() {
       return ca - cb;
     });
   }, [points]);
+  useEffect(() => {
+  // 'foot' | 'bicycle' | 'driving'
+  computeStreetRoute(sortedPoints, 'foot');
+}, [sortedPoints]);
+
 
   const polyPositions = sortedPoints.map(p => [p.lat, p.lng]);
   const center = polyPositions[0] || [44.7866, 20.4489];
@@ -193,7 +226,16 @@ export default function TourDetails() {
               </Popup>
             </Marker>
           ))}
-          {polyPositions.length >= 2 && <Polyline positions={polyPositions} />}
+          {/* {polyPositions.length >= 2 && <Polyline positions={polyPositions} />} */}
+          {routeCoords ? (
+            <Polyline positions={routeCoords} />
+            ) : (
+            polyPositions.length >= 2 && (
+                // fallback: ravna linija ako routing nije uspeo
+                <Polyline positions={polyPositions} dashArray="6 8" />
+            )
+            )}
+
           {canEdit && <ClickToPick onPick={setPicked} />}
         </MapContainer>
         <p style={{opacity:0.7, marginTop:8}}>
@@ -265,4 +307,7 @@ export default function TourDetails() {
       </section>
     </div>
   );
+
+ 
+
 }

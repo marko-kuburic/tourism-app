@@ -200,15 +200,12 @@ export default function ToursList() {
                 )}
 
                 {/* >>> DODATA DUGMAD <<< */}
-                {/* <div className="t-actions" style={{ border: "1px dashed red" }}>
-                  <Link className="t-btn-secondary" to={`/tours/${t.id}`}>View</Link>
-                  <a className="t-btn" href={`/tours/${t.id}`}>Manage Map (test)</a>
-                </div> */}
+              
 
                 <div className="t-actions" style={{ marginTop: 10, display: "flex", gap: 8 }}>
-                  <Link className="t-btn-secondary" to={`/tours/${t.id}`}>View</Link>
+                  
                   {isAuthor && (profile.role === "guide" || profile.role === "admin") && (
-                    <Link className="t-btn" to={`/tours/${t.id}`}>Manage Map</Link>
+                    <Link className="t-btn" to={`/tours/${t.id}`}>View</Link>
                   )}
                 </div>
 
