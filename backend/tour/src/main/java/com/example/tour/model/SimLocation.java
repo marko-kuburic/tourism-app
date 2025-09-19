@@ -1,4 +1,3 @@
-//cat > src/main/java/com/example/tour/model/SimLocation.java <<'EOF'
 package com.example.tour.model;
 
 import jakarta.persistence.*;
@@ -19,7 +18,7 @@ public class SimLocation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @JdbcTypeCode(SqlTypes.CHAR)
+   // @JdbcTypeCode(SqlTypes.CHAR)
     private UUID id;
 
     @Column(name = "user_id", nullable = false, columnDefinition = "char(36)")
@@ -39,4 +38,3 @@ public class SimLocation {
     @Column(name = "updated_at")
     private Instant updatedAt;
 }
-//EOF
