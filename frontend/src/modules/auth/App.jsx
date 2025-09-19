@@ -10,6 +10,8 @@ import BlogFeed from './blog/BlogFeed.jsx'
 import BlogDetails from './blog/BlogDetails.jsx'
 import ToursList from '../tours/ToursList.jsx'
 import CreateTour from '../tours/CreateTour.jsx'
+import TourDetails from '../tours/TourDetails.jsx';
+import PositionSimulator from '../position/PositionSimulator.jsx';
 
 import { getProfile } from './api.js'
 import '../../styles/auth.css'
@@ -105,6 +107,10 @@ export default function App() {
 
             <Route path="/tours" element={<ToursList />} />
             <Route path="/tours/new" element={<CreateTour />} />
+
+            <Route path="/tours/:id" element={<TourDetails/>} />
+            <Route path="/position-simulator" element={<PositionSimulator/>} />
+
 
             <Route
               path="*"
