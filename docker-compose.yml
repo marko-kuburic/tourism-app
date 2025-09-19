@@ -1,6 +1,18 @@
 version: '3.8'
 
 services:
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+      - blog
+      - following
+      - tour
+    restart: unless-stopped
   backend:
     build:
       context: ./backend/stakeholders
