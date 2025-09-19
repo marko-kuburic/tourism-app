@@ -28,6 +28,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
 
+         String path = req.getRequestURI();
+    // preskoči actuator bez tokena
+    if (path.startsWith("/actuator")) {
+        chain.doFilter(req, res);
+        return;
+    }
+
+
         String auth = req.getHeader("Authorization");
         if (auth == null || !auth.startsWith("Bearer ")) {
             chain.doFilter(req, res);

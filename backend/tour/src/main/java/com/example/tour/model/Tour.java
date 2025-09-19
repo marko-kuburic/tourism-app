@@ -17,6 +17,7 @@ import java.util.UUID;
 @NoArgsConstructor @AllArgsConstructor @Builder
 public class Tour {
 
+
     @Id
     @Column(length = 36, nullable = false, columnDefinition = "CHAR(36)")
     private UUID id;   // ⬅ UUID in Java, CHAR(36) in DB
