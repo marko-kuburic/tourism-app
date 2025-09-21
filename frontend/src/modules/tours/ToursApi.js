@@ -43,4 +43,11 @@ export const ToursAPI = {
   remove(id) {
     return apiFetch(`/tours/${id}`, { method: 'DELETE' });
   },
+    // Reviews
+    getReviews(tourId) {
+      return apiFetch(`/tours/${tourId}/reviews`);
+    },
+    addReview(tourId, body) {
+      return apiFetch(`/tours/${tourId}/reviews`, { method: 'POST', body: JSON.stringify(body) });
+    },
 };
