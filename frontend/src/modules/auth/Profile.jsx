@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getProfile } from './api.js'
+import { Link } from 'react-router-dom'  
 
 export default function Profile() {
   const [profile, setProfile] = useState(null)
@@ -31,8 +32,22 @@ export default function Profile() {
 
   return (
     <div className="grid">
-      <h2>Profile</h2>
+      {/* <h2>Profile</h2> */}
       
+       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <h2 style={{ margin: 0 }}>Profile</h2>
+        {profile.role === 'tourist' && (
+          <Link
+            to="/position-simulator"
+            className="button"
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            Set location
+          </Link>
+        )}
+      </div>
+
+
       <div className="profile-field">
         <strong>Username:</strong>
         <input className="input" value={profile.username} readOnly />
