@@ -1,126 +1,94 @@
-const isDev = import.meta && import.meta.env && import.meta.env.DEV
-const apiBaseUrl = (import.meta && import.meta.env && import.meta.env.VITE_API_BASE_URL) || 'http://localhost:8081'
-const followingBaseUrl = (import.meta && import.meta.env && import.meta.env.VITE_FOLLOWING_API_URL) || 'http://localhost:8083'
+// src/modules/auth/api.js
+const ROOT = (import.meta?.env?.VITE_API_BASE_URL) || 'http://localhost:8080';
 
-function getAuthHeaders() {
-  const token = localStorage.getItem('auth_token')
-  return {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
+// Service bases (go through gateway)
+const STAKE = `${ROOT}/api/stakeholders`;
+const FOLLOW = `${ROOT}/api/following`;
+
+function authHeader() {
+  const t = localStorage.getItem('auth_token');
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+function jsonHeaders(extra = {}) {
+  return { 'Content-Type': 'application/json', ...authHeader(), ...extra };
+}
+
+async function handle(res, fallbackMsg) {
+  if (res.ok) return res.status === 204 ? null : res.json();
+  try {
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      const b = await res.json();
+      throw new Error(b.error || b.message || fallbackMsg || `HTTP ${res.status}`);
+    }
+    const t = await res.text();
+    throw new Error(t || fallbackMsg || `HTTP ${res.status}`);
+  } catch {
+    throw new Error(fallbackMsg || `HTTP ${res.status}`);
   }
 }
 
 export async function login(payload) {
-  const res = await fetch(`${apiBaseUrl}/login`, {
+  const res = await fetch(`${STAKE}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
-  if (!res.ok) {
-    let err = {}
-    try { err = await res.json() } catch {}
-    throw new Error(err.error || `Login failed (${res.status})`)
-  }
-  return res.json()
+    body: JSON.stringify(payload),
+  });
+  return handle(res, 'Login failed');
 }
 
 export async function register(payload) {
-  const res = await fetch(`${apiBaseUrl}/register`, {
+  const res = await fetch(`${STAKE}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
-  if (!res.ok) {
-    let err = {}
-    try { err = await res.json() } catch {}
-    throw new Error(err.error || `Register failed (${res.status})`)
-  }
-  return res.json()
+    body: JSON.stringify(payload),
+  });
+  return handle(res, 'Register failed');
 }
 
 export async function getProfile() {
-  const res = await fetch(`${apiBaseUrl}/me`, {
-    method: 'GET',
-    headers: getAuthHeaders()
-  })
-  if (!res.ok) {
-    let err = {}
-    try { err = await res.json() } catch {}
-    throw new Error(err.error || `Failed to fetch profile (${res.status})`)
-  }
-  return res.json()
+  const res = await fetch(`${STAKE}/me`, {
+    headers: jsonHeaders(),
+  });
+  return handle(res, 'Failed to fetch profile');
 }
 
 export async function updateProfile(payload) {
-  const res = await fetch(`${apiBaseUrl}/me`, {
+  const res = await fetch(`${STAKE}/me`, {
     method: 'PUT',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(payload)
-  })
-  if (!res.ok) {
-    let err = {}
-    try { err = await res.json() } catch {}
-    throw new Error(err.error || `Failed to update profile (${res.status})`)
-  }
-  return res.json()
-}
-
-export async function getRecommendations() {
-  const token = localStorage.getItem('auth_token')
-  const res = await fetch(`${followingBaseUrl}/recommendations`, {
-    headers: { 'Authorization': token ? `Bearer ${token}` : '' }
-  })
-  if (!res.ok) throw new Error('Failed to load recommendations')
-  return res.json()
-}
-
-export async function followUser(userId) {
-  const token = localStorage.getItem('auth_token')
-  const res = await fetch(`${followingBaseUrl}/follow/${userId}`, {
-    method: 'POST',
-    headers: { 'Authorization': token ? `Bearer ${token}` : '' }
-  })
-  if (!res.ok) {
-    let err = {}
-    try { err = await res.json() } catch {}
-    throw new Error(err.error || 'Failed to follow user')
-  }
-  return res.json()
+    headers: jsonHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return handle(res, 'Failed to update profile');
 }
 
 export async function getAllUsers() {
-  const token = localStorage.getItem('auth_token')
-  const res = await fetch(`${apiBaseUrl}/users`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
-    }
-  })
-  if (!res.ok) {
-    let err = {}
-    try { err = await res.json() } catch {}
-    throw new Error(err.error || `Failed to fetch users (${res.status})`)
-  }
-  return res.json()
+  const res = await fetch(`${STAKE}/users`, {
+    headers: jsonHeaders(),
+  });
+  return handle(res, 'Failed to fetch users');
 }
 
 export async function blockUser(userId) {
-  const token = localStorage.getItem('auth_token')
-  const res = await fetch(`${apiBaseUrl}/block-user/${userId}`, {
+  const res = await fetch(`${STAKE}/block-user/${userId}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
-    }
-  })
-  if (!res.ok) {
-    let err = {}
-    try { err = await res.json() } catch {}
-    throw new Error(err.error || `Failed to block user (${res.status})`)
-  }
-  return res.json()
+    headers: jsonHeaders(),
+  });
+  return handle(res, 'Failed to block user');
 }
 
+export async function getRecommendations() {
+  const res = await fetch(`${FOLLOW}/recommendations`, {
+    headers: authHeader(),
+  });
+  return handle(res, 'Failed to load recommendations');
+}
 
-
+export async function followUser(userId) {
+  const res = await fetch(`${FOLLOW}/follow/${userId}`, {
+    method: 'POST',
+    headers: authHeader(),
+  });
+  return handle(res, 'Failed to follow user');
+}

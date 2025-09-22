@@ -11,32 +11,40 @@ message Tour {
   string name = 3;
   string description = 4;
   string difficulty = 5;   // EASY | MEDIUM | HARD
-  string status = 6;       // DRAFT | ACTIVE | ...
+  string status = 6;       // npr. PUBLISHED/DRAFT/...
   int64  priceCents = 7;
-  string createdAt = 8;    // ISO-8601
-  string updatedAt = 9;    // ISO-8601
+  repeated string tags = 8; 
+  int64  createdAt = 9;     
+  int64  updatedAt = 10;   
 }
 
-message ListToursRequest {}
-message ListToursResponse { repeated Tour items = 1; }
+message ListToursRequest {
+  string authorId = 1; 
+}
+
+message ListToursResponse {
+  repeated Tour items = 1;
+}
 
 message CreateTourRequest {
-  string authorId   = 1;
-  string name       = 2;
-  string description= 3;
-  string difficulty = 4;
-  int64  priceCents = 5;
+  string authorId    = 1;
+  string name        = 2;
+  string description = 3;
+  string difficulty  = 4;
+  int64  priceCents  = 5;
+  string status      = 6;             
+  repeated string tags = 7;           
 }
 
-message CreateTourResponse { Tour tour = 1; }
+message CreateTourResponse {
+  Tour tour = 1;
+}
 
 message DeleteTourRequest { string id = 1; }
 message DeleteTourResponse {}
 
 service TourService {
-  rpc ListTours (ListToursRequest) returns (ListToursResponse);
+  rpc ListTours  (ListToursRequest)  returns (ListToursResponse);
   rpc CreateTour (CreateTourRequest) returns (CreateTourResponse);
-  
-  // Za SAGA kompenzaciju:
   rpc DeleteTour (DeleteTourRequest) returns (DeleteTourResponse);
 }

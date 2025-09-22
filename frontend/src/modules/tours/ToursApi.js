@@ -1,9 +1,10 @@
-const API_BASE =
-  import.meta.env.VITE_TOURS_BASE ||
-  import.meta.env.VITE_TOURS_API_URL ||
-  '/api-tours';
+// src/modules/tours/ToursApi.js
 
-function authHeaders() {
+const ROOT = (import.meta?.env?.VITE_API_BASE_URL) || 'http://localhost:8080';
+// Use /api-tours for the gRPC bridge, not /api/tour (REST)
+const API_BASE = `${ROOT}/api-tours`;
+
+function authHeader() {
   const t = localStorage.getItem('auth_token');
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
@@ -11,43 +12,69 @@ function authHeaders() {
 async function apiFetch(path, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
-    ...authHeaders(),
+    ...authHeader(),
     ...(options.headers || {}),
   };
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
 
   if (!res.ok) {
-    let msg = `HTTP ${res.status}`;
     try {
       const ct = res.headers.get('content-type') || '';
-      msg = ct.includes('application/json')
-        ? (await res.json()).message || (await res.json()).error || msg
-        : await res.text() || msg;
-    } catch {}
-    throw new Error(msg);
+      if (ct.includes('application/json')) {
+        const b = await res.json();
+        throw new Error(b.message || b.error || `HTTP ${res.status}`);
+      }
+      throw new Error((await res.text()) || `HTTP ${res.status}`);
+    } catch {
+      throw new Error(`HTTP ${res.status}`);
+    }
   }
-  return res.status === 204 ? null : res.json();
+
+  if (res.status === 204) return null;
+  return res.json();
 }
 
 export const ToursAPI = {
-  list() {
-    return apiFetch('/tours');
+  async list() {
+    const data = await apiFetch('/tours');
+    // gRPC ListTours response is { items: [...] }
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.items)) return data.items;
+    return [];
   },
-  // expects a fully-formed body from the caller
-  create(body) {
-    return apiFetch('/tours', { method: 'POST', body: JSON.stringify(body) });
+
+  async create(body) {
+    // body must contain: { name, description, priceCents, difficulty, [status], [tags] }
+    const data = await apiFetch('/tours', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    // gRPC CreateTour response is { tour: {...}, requestId: "..." }
+    return data?.tour || data;
   },
+
   get(id) {
     return apiFetch(`/tours/${id}`);
   },
+
   remove(id) {
     return apiFetch(`/tours/${id}`, { method: 'DELETE' });
   },
-    // Reviews
-    getReviews(tourId) {
-      return apiFetch(`/tours/${tourId}/reviews`);
-    },
-    addReview(tourId, body) {
-      return apiFetch(`/tours/${tourId}/reviews`, { method: 'POST', body: JSON.stringify(body) });
-    },
+
+  // Optional reviews if you implement them in the same service
+  getReviews(tourId) {
+    return apiFetch(`/tours/${tourId}/reviews`);
+  },
+
+  addReview(tourId, body) {
+    return apiFetch(`/tours/${tourId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
 };

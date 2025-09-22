@@ -1,5 +1,5 @@
-//cat > src/main/java/com/example/tour/repository/KeyPointRepository.java <<'EOF'
-package com.example.tour.repository;
+
+package com.example.tour.repo;
 
 import com.example.tour.model.KeyPoint;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,141 +1,158 @@
 // src/main/java/com/example/tour/grpc/TourGrpcService.java
 package com.example.tour.grpc;
 
-import com.example.tour.dto.TourResponse;
 import com.example.tour.model.Difficulty;
 import com.example.tour.model.Status;
-import com.example.tour.service.TourService;
+import com.example.tour.model.Tour;
+import com.example.tour.repo.TourRepository;
 import io.grpc.StatusRuntimeException;
-import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-import lombok.RequiredArgsConstructor;
 import net.devh.boot.grpc.server.service.GrpcService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-/**
- * gRPC servis prilagođen domen servisu koji radi sa DTO-ovima (TourResponse).
- * Napomena: generisane proto klase su u ovom istom paketu (com.example.tour.grpc)
- * zbog option java_package u .proto fajlu; zato:
- *  - Proto tipovi se koriste po kratkom imenu (CreateTourRequest, ListToursResponse, ...).
- *  - Naš DTO CreateTourRequest koristimo kao potpuno kvalifikovano ime
- *    (com.example.tour.dto.CreateTourRequest) da izbegnemo koliziju.
- */
 @GrpcService
-@RequiredArgsConstructor
 public class TourGrpcService extends TourServiceGrpc.TourServiceImplBase {
 
-    private final TourService domain;
+    private static final Logger log = LoggerFactory.getLogger(TourGrpcService.class);
 
-    @Override
-    public void listTours(ListToursRequest req, StreamObserver<ListToursResponse> out) {
-        try {
-            var tours = domain.listAll().stream()
-                    .map(this::toGrpc) // TourResponse -> proto Tour
-                    .toList();
+    private final TourRepository tourRepository;
 
-            var resp = ListToursResponse.newBuilder()
-                    .addAllItems(tours) // pretpostavka: repeated Tour items
-                    .build();
-
-            out.onNext(resp);
-            out.onCompleted();
-        } catch (Exception e) {
-            out.onError(asInternal("Failed to list tours", e));
-        }
+    public TourGrpcService(TourRepository tourRepository) {
+        this.tourRepository = tourRepository;
+        log.info("TourGrpcService initialized");
     }
 
-    @Override
-    public void createTour(CreateTourRequest req, StreamObserver<CreateTourResponse> out) {
-        try {
-            var authorId = UUID.fromString(req.getAuthorId());
+    /* =======================
+       Helpers: mapping Entity → gRPC
+       ======================= */
+    private com.example.tour.grpc.Tour toGrpc(Tour t) {
+        com.example.tour.grpc.Tour.Builder b = com.example.tour.grpc.Tour.newBuilder();
 
-            // Proto šalje difficulty/status kao STRING -> mapiramo na domen enume
-            Difficulty diff = Difficulty.valueOf(req.getDifficulty());
-            Status status   = Status.valueOf(req.getStatus());
+        // Expect standard getters on your entity (no Lombok required if you implement them manually)
+        if (t.getId() != null)        b.setId(t.getId().toString());
+        if (t.getAuthorId() != null)  b.setAuthorId(t.getAuthorId().toString());
 
-            var dto = com.example.tour.dto.CreateTourRequest.builder()
-                    .name(req.getName())
-                    .description(req.getDescription())
-                    .difficulty(diff)
-                    .status(status)
-                    .priceCents(req.getPriceCents())
-                    .tags(new HashSet<>(req.getTagsList()))
-                    .build();
+        b.setName(t.getName() == null ? "" : t.getName());
+        b.setDescription(t.getDescription() == null ? "" : t.getDescription());
+        b.setDifficulty(t.getDifficulty() != null ? t.getDifficulty().name() : Difficulty.EASY.name());
+        b.setStatus(t.getStatus() != null ? t.getStatus().name() : Status.DRAFT.name());
+        b.setPriceCents(t.getPriceCents() == null ? 0L : t.getPriceCents());
 
-            TourResponse created = domain.create(authorId, dto);
+        Instant created = t.getCreatedAt();
+        if (created != null) b.setCreatedAt(created.toEpochMilli());
+        Instant updated = t.getUpdatedAt();
+        if (updated != null) b.setUpdatedAt(updated.toEpochMilli());
 
-            var resp = CreateTourResponse.newBuilder()
-                    .setTour(toGrpc(created))
-                    .build();
-
-            out.onNext(resp);
-            out.onCompleted();
-        } catch (IllegalArgumentException iae) {
-            // npr. loš UUID ili nepostojeća enum vrednost
-            out.onError(Status.INVALID_ARGUMENT.withDescription(iae.getMessage()).withCause(iae).asRuntimeException());
-        } catch (Exception e) {
-            out.onError(asInternal("Failed to create tour", e));
-        }
-    }
-
-    @Override
-    public void deleteTour(DeleteTourRequest req, StreamObserver<DeleteTourResponse> out) {
-        try {
-            var id = UUID.fromString(req.getId());
-            // Preporuka: domain.delete(UUID) neka bude idempotentno (bez greške ako ne postoji)
-            domain.delete(id);
-            out.onNext(DeleteTourResponse.newBuilder().build());
-            out.onCompleted();
-        } catch (IllegalArgumentException iae) {
-            out.onError(Status.INVALID_ARGUMENT.withDescription("Invalid tour id").withCause(iae).asRuntimeException());
-        } catch (Exception e) {
-            out.onError(asInternal("Failed to delete tour", e));
-        }
-    }
-
-    // -------------------------------------------------
-    // Private helpers
-    // -------------------------------------------------
-
-    /** Mapira naš TourResponse DTO → proto Tour (generisano iz .proto). */
-    private Tour toGrpc(TourResponse t) {
-        var b = Tour.newBuilder()
-                .setId(safeUuid(t.getId()))
-                .setAuthorId(safeUuid(t.getAuthorId()))
-                .setName(nz(t.getName()))
-                .setDescription(nz(t.getDescription()))
-                .setDifficulty(t.getDifficulty() != null ? t.getDifficulty().name() : "")
-                .setPriceCents(t.getPriceCents() != null ? t.getPriceCents() : 0L);
-
-        if (t.getStatus() != null) {
-            b.setStatus(t.getStatus().name());
-        }
-        if (t.getTags() != null && !t.getTags().isEmpty()) {
-            b.addAllTags(t.getTags());
-        }
-        if (t.getCreatedAt() != null) {
-            b.setCreatedAt(formatInstant(t.getCreatedAt()));
-        }
-        if (t.getUpdatedAt() != null) {
-            b.setUpdatedAt(formatInstant(t.getUpdatedAt()));
-        }
         return b.build();
     }
 
-    private static String formatInstant(Instant i) {
-        return DateTimeFormatter.ISO_INSTANT.withZone(ZoneOffset.UTC).format(i);
+    /* =======================
+       gRPC methods
+       ======================= */
+
+    @Override
+    public void listTours(ListToursRequest request, StreamObserver<ListToursResponse> responseObserver) {
+        List<Tour> all = tourRepository.findAll();
+        List<com.example.tour.grpc.Tour> items = all.stream()
+                .map(this::toGrpc)
+                .collect(Collectors.toList());
+
+        responseObserver.onNext(ListToursResponse.newBuilder().addAllItems(items).build());
+        responseObserver.onCompleted();
     }
 
-    private static String nz(String s) { return s == null ? "" : s; }
+    @Override
+    public void createTour(CreateTourRequest request, StreamObserver<CreateTourResponse> responseObserver) {
+        try {
+            UUID authorId = uuidOrError(request.getAuthorId(), "authorId");
+            String name = request.getName();
+            if (name == null || name.isBlank()) {
+                throw invalidArg("name must not be blank");
+            }
 
-    private static String safeUuid(UUID u) { return u == null ? "" : u.toString(); }
+            Difficulty difficulty = safeDifficulty(request.getDifficulty());
+            Status status = Status.PUBLISHED; // or derive from request if needed
 
-    private static StatusRuntimeException asInternal(String msg, Throwable t) {
-        return Status.INTERNAL.withDescription(msg).withCause(t).asRuntimeException();
+            // ---- No Lombok: use setters or an explicit constructor you define on the entity ----
+            Tour entity = new Tour();
+            entity.setId(UUID.randomUUID());
+            entity.setAuthorId(authorId);
+            entity.setName(name.trim());
+            entity.setDescription(request.getDescription());
+            entity.setDifficulty(difficulty);
+            entity.setStatus(status);
+            entity.setPriceCents(request.getPriceCents());
+            // createdAt/updatedAt: let DB/defaults/listeners handle, or set here if you prefer
+
+            Tour saved = tourRepository.save(entity);
+
+            responseObserver.onNext(CreateTourResponse.newBuilder().setTour(toGrpc(saved)).build());
+            responseObserver.onCompleted();
+        } catch (StatusRuntimeException sre) {
+            log.warn("CreateTour rejected: {}", sre.getStatus().getDescription());
+            responseObserver.onError(sre);
+        } catch (Exception e) {
+            log.error("CreateTour failed", e);
+            responseObserver.onError(io.grpc.Status.INTERNAL
+                    .withDescription("Failed to create tour")
+                    .withCause(e)
+                    .asRuntimeException());
+        }
+    }
+
+    @Override
+    public void deleteTour(DeleteTourRequest request, StreamObserver<DeleteTourResponse> responseObserver) {
+        try {
+            UUID id = uuidOrError(request.getId(), "id");
+            if (tourRepository.existsById(id)) {
+                tourRepository.deleteById(id);
+            }
+            responseObserver.onNext(DeleteTourResponse.newBuilder().build());
+            responseObserver.onCompleted();
+        } catch (StatusRuntimeException sre) {
+            responseObserver.onError(sre);
+        } catch (Exception e) {
+            log.error("DeleteTour failed", e);
+            responseObserver.onError(io.grpc.Status.INTERNAL
+                    .withDescription("Failed to delete tour")
+                    .withCause(e)
+                    .asRuntimeException());
+        }
+    }
+
+    /* =======================
+       Small utils (no Lombok)
+       ======================= */
+
+    private static UUID uuidOrError(String raw, String fieldName) {
+        if (raw == null || raw.isBlank()) {
+            throw invalidArg(fieldName + " is required and must be a UUID");
+        }
+        try {
+            return UUID.fromString(raw.trim());
+        } catch (IllegalArgumentException ex) {
+            throw invalidArg(fieldName + " must be a valid UUID");
+        }
+    }
+
+    private static StatusRuntimeException invalidArg(String msg) {
+        // Fully-qualify gRPC Status to avoid clashing with your model Status enum
+        return io.grpc.Status.INVALID_ARGUMENT.withDescription(msg).asRuntimeException();
+    }
+
+    private static Difficulty safeDifficulty(String raw) {
+        if (raw == null || raw.isBlank()) return Difficulty.EASY;
+        try {
+            return Difficulty.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return Difficulty.EASY; // fallback
+        }
     }
 }

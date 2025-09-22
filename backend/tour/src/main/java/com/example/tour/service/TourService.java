@@ -3,9 +3,8 @@ package com.example.tour.service;
 
 import com.example.tour.dto.CreateTourRequest;
 import com.example.tour.dto.TourResponse;
-import com.example.tour.model.Status;
 import com.example.tour.model.Tour;
-import com.example.tour.repository.TourRepository;
+import com.example.tour.repo.TourRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -55,7 +54,7 @@ public class TourService {
 
     @Transactional(readOnly = true)
     public List<TourResponse> listMine(UUID authorId) {
-        return repo.findAllByAuthorId(authorId)
+        return repo.findByAuthorId(authorId)
                 .stream()
                 .map(this::toDto)
                 .toList();
@@ -66,6 +65,7 @@ public class TourService {
         if (repo.existsById(id)) {
             repo.deleteById(id);
         }
+    } // <-- ova zagrada je nedostajala
 
     private TourResponse toDto(Tour t) {
         return TourResponse.builder()
