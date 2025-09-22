@@ -227,10 +227,13 @@ export default function App() {
                 </>
               )}
 
-              <Nav className="tab" to="/tours" end>Tours</Nav>
+              {/* Hide Tours tab completely for admin */}
+              {!isAdmin && (
+                <Nav className="tab" to="/tours" end>Tours</Nav>
+              )}
 
               {/* Create Tour vidi samo guide ili admin */}
-              {(isGuide || isAdmin) && (
+              {(isGuide) && (
                 <Nav className="tab" to="/tours/new">Create Tour</Nav>
               )}
 
@@ -255,12 +258,26 @@ export default function App() {
             {/* Admin rute – štitimo jednostavnim guardom */}
             <Route
               path="/admin/users"
-              element={isAdmin ? <AdminUsers /> : <Navigate to="/login" replace />}
+              element={isAdmin ? <AdminUsers /> : <Navigate to="/admin/users" replace />}
             />
 
-            {/* Ture: lista svima, detalji svima */}
-            <Route path="/tours" element={isTourist ? <TourListForTourist /> : <ToursList />} />
-            <Route path="/tours/:id" element={<TourDetails />} />
+            {/* Ture: admin ne sme da vidi ni listu ni detalje */}
+            <Route
+              path="/tours"
+              element={
+                isAdmin
+                  ? <Navigate to="/admin/users" replace />
+                  : (isTourist ? <TourListForTourist /> : <ToursList />)
+              }
+            />
+            <Route
+              path="/tours/:id"
+              element={
+                isAdmin
+                  ? <Navigate to="/admin/users" replace />
+                  : <TourDetails />
+              }
+            />
 
             {/* Kreiranje ture: samo guide/admin */}
             <Route
