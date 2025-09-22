@@ -51,6 +51,19 @@ export async function getProfile() {
   return res.json()
 }
 
+// Normalizacija uloge (tako da radi sa 'guide', 'admin', 'tourist')
+export function normalizeRole(profile) {
+  if (!profile) return "";
+  const raw =
+    profile.role ??
+    profile.Role ??
+    (Array.isArray(profile.roles) && profile.roles[0]) ??
+    (Array.isArray(profile.authorities) && profile.authorities[0]?.authority) ??
+    "";
+  return String(raw).toLowerCase().replace(/^role_/, "");
+}
+
+
 export async function updateProfile(payload) {
   const res = await fetch(`${apiBaseUrl}/me`, {
     method: 'PUT',
