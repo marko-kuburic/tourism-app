@@ -1,33 +1,29 @@
+// src/main/java/com/example/tour/grpc/TourGrpcService.java
 package com.example.tour.grpc;
 
-import com.example.tour.dto.CreateTourRequest;
 import com.example.tour.dto.TourResponse;
 import com.example.tour.model.Difficulty;
+import com.example.tour.model.Status;
 import com.example.tour.service.TourService;
+import io.grpc.StatusRuntimeException;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import net.devh.boot.grpc.server.service.GrpcService;
-import tour.v1.CreateTourRequest as GrpcCreateTourRequest; // alias nije dozvoljen u Javi – vidi napomenu ispod
-import tour.v1.CreateTourResponse;
-import tour.v1.DeleteTourRequest;
-import tour.v1.DeleteTourResponse;
-import tour.v1.ListToursRequest;
-import tour.v1.ListToursResponse;
-import tour.v1.TourServiceGrpc;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
- * gRPC servis prilagođen TourService koji radi sa DTO-ovima (TourResponse).
- *
- * NAPOMENA: Java ne dozvoljava alias import-a. Ispod u kodu koristimo potpuna imena
- * za proto poruke kada se sudaraju nazivi sa našim DTO klasama.
+ * gRPC servis prilagođen domen servisu koji radi sa DTO-ovima (TourResponse).
+ * Napomena: generisane proto klase su u ovom istom paketu (com.example.tour.grpc)
+ * zbog option java_package u .proto fajlu; zato:
+ *  - Proto tipovi se koriste po kratkom imenu (CreateTourRequest, ListToursResponse, ...).
+ *  - Naš DTO CreateTourRequest koristimo kao potpuno kvalifikovano ime
+ *    (com.example.tour.dto.CreateTourRequest) da izbegnemo koliziju.
  */
 @GrpcService
 @RequiredArgsConstructor
@@ -38,35 +34,35 @@ public class TourGrpcService extends TourServiceGrpc.TourServiceImplBase {
     @Override
     public void listTours(ListToursRequest req, StreamObserver<ListToursResponse> out) {
         try {
-            // Ako želiš filtriranje po authorId (ako proto dodate polje), ovde možeš granati.
             var tours = domain.listAll().stream()
-                    .map(this::toGrpc)   // mapiramo iz TourResponse DTO → proto Tour
-                    .collect(Collectors.toList());
+                    .map(this::toGrpc) // TourResponse -> proto Tour
+                    .toList();
 
             var resp = ListToursResponse.newBuilder()
-                    .addAllItems(tours)  // pretpostavka: proto ListToursResponse ima "repeated Tour items"
+                    .addAllItems(tours) // pretpostavka: repeated Tour items
                     .build();
 
             out.onNext(resp);
             out.onCompleted();
         } catch (Exception e) {
-            out.onError(Status.INTERNAL.withDescription("Failed to list tours").withCause(e).asRuntimeException());
+            out.onError(asInternal("Failed to list tours", e));
         }
     }
 
     @Override
-    public void createTour(tour.v1.CreateTourRequest req, StreamObserver<CreateTourResponse> out) {
+    public void createTour(CreateTourRequest req, StreamObserver<CreateTourResponse> out) {
         try {
             var authorId = UUID.fromString(req.getAuthorId());
 
-            // Proto šalje difficulty kao string – mapiramo na domen enum
+            // Proto šalje difficulty/status kao STRING -> mapiramo na domen enume
             Difficulty diff = Difficulty.valueOf(req.getDifficulty());
+            Status status   = Status.valueOf(req.getStatus());
 
-            var dto = CreateTourRequest.builder()
+            var dto = com.example.tour.dto.CreateTourRequest.builder()
                     .name(req.getName())
                     .description(req.getDescription())
                     .difficulty(diff)
-                    .status(Status.valueOf(req.getStatus()))
+                    .status(status)
                     .priceCents(req.getPriceCents())
                     .tags(new HashSet<>(req.getTagsList()))
                     .build();
@@ -74,15 +70,16 @@ public class TourGrpcService extends TourServiceGrpc.TourServiceImplBase {
             TourResponse created = domain.create(authorId, dto);
 
             var resp = CreateTourResponse.newBuilder()
-                    .setTour(toGrpc(created))  // vraćamo ceo tour objekat
+                    .setTour(toGrpc(created))
                     .build();
 
             out.onNext(resp);
             out.onCompleted();
         } catch (IllegalArgumentException iae) {
+            // npr. loš UUID ili nepostojeća enum vrednost
             out.onError(Status.INVALID_ARGUMENT.withDescription(iae.getMessage()).withCause(iae).asRuntimeException());
         } catch (Exception e) {
-            out.onError(Status.INTERNAL.withDescription("Failed to create tour").withCause(e).asRuntimeException());
+            out.onError(asInternal("Failed to create tour", e));
         }
     }
 
@@ -90,13 +87,14 @@ public class TourGrpcService extends TourServiceGrpc.TourServiceImplBase {
     public void deleteTour(DeleteTourRequest req, StreamObserver<DeleteTourResponse> out) {
         try {
             var id = UUID.fromString(req.getId());
-            domain.delete(id);  
+            // Preporuka: domain.delete(UUID) neka bude idempotentno (bez greške ako ne postoji)
+            domain.delete(id);
             out.onNext(DeleteTourResponse.newBuilder().build());
             out.onCompleted();
         } catch (IllegalArgumentException iae) {
             out.onError(Status.INVALID_ARGUMENT.withDescription("Invalid tour id").withCause(iae).asRuntimeException());
         } catch (Exception e) {
-            out.onError(Status.INTERNAL.withDescription("Failed to delete tour").withCause(e).asRuntimeException());
+            out.onError(asInternal("Failed to delete tour", e));
         }
     }
 
@@ -104,8 +102,9 @@ public class TourGrpcService extends TourServiceGrpc.TourServiceImplBase {
     // Private helpers
     // -------------------------------------------------
 
-    private tour.v1.Tour toGrpc(TourResponse t) {
-        var b = tour.v1.Tour.newBuilder()
+    /** Mapira naš TourResponse DTO → proto Tour (generisano iz .proto). */
+    private Tour toGrpc(TourResponse t) {
+        var b = Tour.newBuilder()
                 .setId(safeUuid(t.getId()))
                 .setAuthorId(safeUuid(t.getAuthorId()))
                 .setName(nz(t.getName()))
@@ -125,7 +124,6 @@ public class TourGrpcService extends TourServiceGrpc.TourServiceImplBase {
         if (t.getUpdatedAt() != null) {
             b.setUpdatedAt(formatInstant(t.getUpdatedAt()));
         }
-
         return b.build();
     }
 
@@ -134,7 +132,10 @@ public class TourGrpcService extends TourServiceGrpc.TourServiceImplBase {
     }
 
     private static String nz(String s) { return s == null ? "" : s; }
+
     private static String safeUuid(UUID u) { return u == null ? "" : u.toString(); }
 
-
+    private static StatusRuntimeException asInternal(String msg, Throwable t) {
+        return Status.INTERNAL.withDescription(msg).withCause(t).asRuntimeException();
+    }
 }
