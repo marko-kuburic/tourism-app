@@ -10,6 +10,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+
+import com.example.tour.dto.PublishTourRequest;
+import com.example.tour.dto.TourPublicResponse;
+
+
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -57,5 +62,37 @@ public class TourController {
                 : URI.create("/tours");
 
         return ResponseEntity.created(location).body(created);
+    }
+
+    @GetMapping("/public")
+    public ResponseEntity<List<TourPublicResponse>> listPublic() {
+        return ResponseEntity.ok(service.listPublishedForTourists());
+    }
+
+    @PostMapping("/{id}/publish")
+    public ResponseEntity<TourResponse> publish(HttpServletRequest req,
+                                                @PathVariable UUID id,
+                                                @Valid @RequestBody PublishTourRequest body) {
+        UUID userId = extractUserId(req);
+        return ResponseEntity.ok(service.publish(id, userId, body));
+    }
+
+     @PostMapping("/{id}/archive")
+    public ResponseEntity<TourResponse> archive(HttpServletRequest req, @PathVariable UUID id) {
+        UUID userId = extractUserId(req);
+        return ResponseEntity.ok(service.archive(id, userId));
+    }
+
+    @PostMapping("/{id}/unarchive")
+    public ResponseEntity<TourResponse> unarchive(HttpServletRequest req, @PathVariable UUID id) {
+        UUID userId = extractUserId(req);
+        return ResponseEntity.ok(service.unarchive(id, userId));
+    }
+
+    private UUID extractUserId(HttpServletRequest req) {
+        Object uidAttr = req.getAttribute("userId");
+        if (uidAttr instanceof UUID u) return u;
+        if (uidAttr != null) return UUID.fromString(String.valueOf(uidAttr));
+        throw new IllegalStateException("Missing userId in request (gateway should set it).");
     }
 }

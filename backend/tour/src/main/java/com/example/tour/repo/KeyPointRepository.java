@@ -1,5 +1,4 @@
-//cat > src/main/java/com/example/tour/repository/KeyPointRepository.java <<'EOF'
-package com.example.tour.repository;
+package com.example.tour.repo;
 
 import com.example.tour.model.KeyPoint;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +10,6 @@ import java.util.UUID;
 public interface KeyPointRepository extends JpaRepository<KeyPoint, UUID> {
     List<KeyPoint> findByTourIdOrderBySeqAsc(UUID tourId);
     Optional<KeyPoint> findTopByTourIdOrderBySeqDesc(UUID tourId);
+    Optional<KeyPoint> findFirstByTourIdOrderBySeqAsc(UUID tourId);
     long countByTourId(UUID tourId);
 }
-//EOF

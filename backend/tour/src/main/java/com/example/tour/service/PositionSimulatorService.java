@@ -4,7 +4,7 @@ package com.example.tour.service;
 import com.example.tour.dto.LocationResponse;
 import com.example.tour.dto.SetLocationRequest;
 import com.example.tour.model.SimLocation;
-import com.example.tour.repository.SimLocationRepository;
+import com.example.tour.repo.SimLocationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
