@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.*;
 
 @Entity
 @Table(name = "tours")
@@ -47,6 +48,29 @@ public class Tour {
     @Column(name = "tag", length = 64, nullable = false)
     @Builder.Default
     private Set<String> tags = new HashSet<>();
+
+
+     /** Ukupna dužina ture u kilometrima (računa se iz ključnih tačaka) */
+    @Column(name = "length_km")
+    private Double lengthKm;
+
+    /** Vremena prolaska po tipu prevoza (u minutima) */
+    @ElementCollection
+    @CollectionTable(name = "tour_durations", joinColumns = @JoinColumn(name = "tour_id"))
+    @MapKeyEnumerated(EnumType.STRING)
+    @MapKeyColumn(name = "transport", length = 16)
+    @Column(name = "minutes", nullable = false)
+    @Builder.Default
+    private Map<TransportType, Integer> durations = new EnumMap<>(TransportType.class);
+
+    /** Kada je objavljena */
+    @Column(name = "published_at")
+    private Instant publishedAt;
+
+    /** Kada je arhivirana */
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

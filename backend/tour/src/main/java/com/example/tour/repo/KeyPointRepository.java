@@ -1,4 +1,3 @@
-
 package com.example.tour.repo;
 
 import com.example.tour.model.KeyPoint;
@@ -11,6 +10,6 @@ import java.util.UUID;
 public interface KeyPointRepository extends JpaRepository<KeyPoint, UUID> {
     List<KeyPoint> findByTourIdOrderBySeqAsc(UUID tourId);
     Optional<KeyPoint> findTopByTourIdOrderBySeqDesc(UUID tourId);
+    Optional<KeyPoint> findFirstByTourIdOrderBySeqAsc(UUID tourId);
     long countByTourId(UUID tourId);
 }
-//EOF
