@@ -50,4 +50,20 @@ export const ToursAPI = {
     addReview(tourId, body) {
       return apiFetch(`/tours/${tourId}/reviews`, { method: 'POST', body: JSON.stringify(body) });
     },
+
+    listPublic() {
+      return apiFetch(`/tours/public`);
+    },
+
+    publish(id, body) {
+      return apiFetch(`/tours/${id}/publish`, { method: 'POST', body: JSON.stringify(body) });
+    },
+    archive(id) {
+      return apiFetch(`/tours/${id}/archive`, { method: 'POST' });
+    },
+    unarchive(id) {
+      return apiFetch(`/tours/${id}/unarchive`, { method: 'POST' });
+    }
+
+
 };
