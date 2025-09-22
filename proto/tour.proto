@@ -1,0 +1,42 @@
+syntax = "proto3";
+package tour.v1;
+
+option java_multiple_files = true;
+option java_package = "com.example.tour.grpc";
+option java_outer_classname = "TourProto";
+
+message Tour {
+  string id = 1;           // UUID kao string
+  string authorId = 2;     // UUID
+  string name = 3;
+  string description = 4;
+  string difficulty = 5;   // EASY | MEDIUM | HARD
+  string status = 6;       // DRAFT | ACTIVE | ...
+  int64  priceCents = 7;
+  string createdAt = 8;    // ISO-8601
+  string updatedAt = 9;    // ISO-8601
+}
+
+message ListToursRequest {}
+message ListToursResponse { repeated Tour items = 1; }
+
+message CreateTourRequest {
+  string authorId   = 1;
+  string name       = 2;
+  string description= 3;
+  string difficulty = 4;
+  int64  priceCents = 5;
+}
+
+message CreateTourResponse { Tour tour = 1; }
+
+message DeleteTourRequest { string id = 1; }
+message DeleteTourResponse {}
+
+service TourService {
+  rpc ListTours (ListToursRequest) returns (ListToursResponse);
+  rpc CreateTour (CreateTourRequest) returns (CreateTourResponse);
+  
+  // Za SAGA kompenzaciju:
+  rpc DeleteTour (DeleteTourRequest) returns (DeleteTourResponse);
+}

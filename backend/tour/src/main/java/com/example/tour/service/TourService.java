@@ -44,7 +44,7 @@ public class TourService {
                 .name(req.getName())
                 .description(req.getDescription())
                 .difficulty(req.getDifficulty())
-                .status(Status.DRAFT)
+                .status(req.getStatus())
                 .priceCents(req.getPriceCents())
                 .tags(req.getTags() == null ? new HashSet<>() : new HashSet<>(req.getTags()))
                 .build();
@@ -60,6 +60,12 @@ public class TourService {
                 .map(this::toDto)
                 .toList();
     }
+
+    @Transactional
+    public void delete(UUID id) {
+        if (repo.existsById(id)) {
+            repo.deleteById(id);
+        }
 
     private TourResponse toDto(Tour t) {
         return TourResponse.builder()
