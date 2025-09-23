@@ -97,5 +97,4 @@ dist
 tmp/
 temp/
 # Mono / podsistemi
-gateway/node_modules/
 **/node_modules/

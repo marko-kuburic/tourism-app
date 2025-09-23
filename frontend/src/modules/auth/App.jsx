@@ -54,6 +54,8 @@ export default function App() {
   }
 
   const isAdmin = myRole === 'admin'
+  const isTourist = myRole === 'tourist'
+  const isGuide = myRole === 'guide'
 
   return (
     <div className="auth-wrap">
@@ -146,22 +148,12 @@ export default function App() {
               }
             />
 
-
-            <Route path="/tours" element={<ToursList />} />
             <Route path="/tours/new" element={<CreateTour />} />
-
-            <Route path="/tours/:id" element={<TourDetails/>} />
             <Route path="/position-simulator" element={<PositionSimulator/>} />
 
             <Route
               path="*"
-              element={
-                isAdmin
-                  ? <Navigate to="/admin/users" replace />
-                  : hasToken
-                    ? <Navigate to="/recommendations" replace />
-                    : <Navigate to="/login" replace />
-              }
+              element={<Navigate to="/login" replace />}
             />
           </Routes>
         </div>

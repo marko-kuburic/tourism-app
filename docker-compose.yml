@@ -10,6 +10,8 @@ services:
     environment:
       PORT: 8080
       PURCHASE_URL: http://purchase:8085 
+      TOUR_GRPC_ADDR: tour:9094
+      PROTO_DIR: /proto
     depends_on:
       - backend
       - blog
@@ -17,14 +19,9 @@ services:
       - tour
       - purchase
     restart: unless-stopped
-
     networks:
       - default                     # <— gateway ostaje i na default mreži (za ostale servise)
       - appnet  
-
-    environment:
-      - TOUR_GRPC_ADDR=tour:9094
-      - PROTO_DIR=/proto
     volumes:
       - ./proto:/proto:ro
 
