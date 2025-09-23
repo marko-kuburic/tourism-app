@@ -1,0 +1,203 @@
+{
+  "id": null,
+  "uid": "tourism-observability",
+  "title": "Tourism Observability",
+  "tags": ["tourism"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "HTTP Requests rate",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "sum by (status, method) (rate(http_requests_total[5m]))", "legendFormat": "{{method}} {{status}}" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "P95 latency (s)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "HTTP 5xx rate (%)",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "percent", "decimals": 2 }, "overrides": [] },
+      "targets": [
+  { "expr": "100 * ((sum(increase(http_requests_total{status=~\"5..\", path!=\"/metrics\"}[$__range])) or vector(0)) / clamp_min(sum(increase(http_requests_total{path!=\"/metrics\"}[$__range])), 1e-9))" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "HTTP 4xx rate (%)",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "percent", "decimals": 2 }, "overrides": [] },
+      "targets": [
+  { "expr": "100 * ((sum(increase(http_requests_total{status=~\"4..\", path!=\"/metrics\"}[$__range])) or vector(0)) / clamp_min(sum(increase(http_requests_total{path!=\"/metrics\"}[$__range])), 1e-9))" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Host CPU (non-idle)",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "avg(1 - avg by (cpu) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))", "legendFormat": "host" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Host Memory used (%)",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "percent", "decimals": 2 }, "overrides": [] },
+      "targets": [
+        { "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Host Network RX/TX (bytes/s)",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "sum by (device) (rate(node_network_receive_bytes_total{device!~\"lo|docker.*\"}[5m]))", "legendFormat": "{{device}} RX" },
+        { "expr": "sum by (device) (rate(node_network_transmit_bytes_total{device!~\"lo|docker.*\"}[5m]))", "legendFormat": "{{device}} TX" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Host Disk usage (%) by mountpoint",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "100 * (1 - (node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay|squashfs|proc|sysfs|cgroup2|devtmpfs\", mountpoint!~\"/proc|/sys|/run|/dev\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|overlay|squashfs|proc|sysfs|cgroup2|devtmpfs\", mountpoint!~\"/proc|/sys|/run|/dev\"}))",
+          "legendFormat": "{{mountpoint}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Container CPU% by service",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "percent", "decimals": 2 }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\", container_label_com_docker_compose_service!=\"\"}[5m])) * 100",
+          "legendFormat": "{{container_label_com_docker_compose_service}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Container Memory (bytes) by service",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "decimals": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{job=\"cadvisor\", container_label_com_docker_compose_service!=\"\"})",
+          "legendFormat": "{{container_label_com_docker_compose_service}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Container restarts (24h)",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 28 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum by (container_label_com_docker_compose_service) (changes(container_start_time_seconds{job=\"cadvisor\", container_label_com_docker_compose_service!=\"\"}[24h]))",
+          "legendFormat": "{{container_label_com_docker_compose_service}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Container Network RX/TX (bytes/s)",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 28 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "Bps", "decimals": 2 }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_network_receive_bytes_total{job=\"cadvisor\", container_label_com_docker_compose_service!=\"\"}[5m]))",
+          "legendFormat": "{{container_label_com_docker_compose_service}} RX"
+        },
+        {
+          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_network_transmit_bytes_total{job=\"cadvisor\", container_label_com_docker_compose_service!=\"\"}[5m]))",
+          "legendFormat": "{{container_label_com_docker_compose_service}} TX"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Container Filesystem usage (bytes)",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 34 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "decimals": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum by (container_label_com_docker_compose_service) (container_fs_usage_bytes{job=\"cadvisor\", container_label_com_docker_compose_service!=\"\"})",
+          "legendFormat": "{{container_label_com_docker_compose_service}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Container Filesystem IO (bytes/s)",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 34 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "Bps", "decimals": 2 }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_fs_reads_bytes_total{job=\"cadvisor\", container_label_com_docker_compose_service!=\"\"}[5m]))",
+          "legendFormat": "{{container_label_com_docker_compose_service}} reads"
+        },
+        {
+          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_fs_writes_bytes_total{job=\"cadvisor\", container_label_com_docker_compose_service!=\"\"}[5m]))",
+          "legendFormat": "{{container_label_com_docker_compose_service}} writes"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Host Disk IO (bytes/s)",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "Bps", "decimals": 2 }, "overrides": [] },
+      "targets": [
+        { "expr": "sum by (device) (rate(node_disk_read_bytes_total{device!~\"loop.*|dm-.*\"}[5m]))", "legendFormat": "{{device}} read" },
+        { "expr": "sum by (device) (rate(node_disk_written_bytes_total{device!~\"loop.*|dm-.*\"}[5m]))", "legendFormat": "{{device}} write" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Host Filesystem usage (bytes)",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "decimals": 0 }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "(node_filesystem_size_bytes{fstype!~\"tmpfs|overlay|squashfs|proc|sysfs|cgroup2|devtmpfs\", mountpoint!~\"/proc|/sys|/run|/dev\"} - node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay|squashfs|proc|sysfs|cgroup2|devtmpfs\", mountpoint!~\"/proc|/sys|/run|/dev\"})",
+          "legendFormat": "{{mountpoint}}"
+        }
+      ]
+    }
+  ]
+}

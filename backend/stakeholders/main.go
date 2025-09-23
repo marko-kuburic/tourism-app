@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"stakeholders/observability"
 	"stakeholders/grpc"
 	"stakeholders/handler"
 	"stakeholders/pb"
@@ -24,6 +25,13 @@ import (
 )
 
 func main() {
+	// Init OpenTelemetry tracing
+	shutdown, err := observability.Init(context.Background())
+	if err != nil {
+		log.Printf("OTel init failed (proceeding without exporter): %v", err)
+	} else {
+		defer func() { _ = shutdown(context.Background()) }()
+	}
 	db := initializeDatabase()
 	defer logDatabaseStatus(db)
 
@@ -42,7 +50,11 @@ func main() {
 	// Start HTTP server
 	go func() {
 		defer wg.Done()
-		router := setupRouter(userHandler, jwtSecret)
+	router := setupRouter(userHandler, jwtSecret)
+	// observability middlewares
+	router.Use(observability.TracingAndMetricsMiddleware)
+	// metrics endpoint
+	router.Handle("/metrics", observability.MetricsHandler()).Methods("GET")
 		corsMiddleware := cors.New(cors.Options{
 			AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173"},
 			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
