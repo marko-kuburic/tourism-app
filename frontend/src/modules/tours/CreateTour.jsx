@@ -49,7 +49,7 @@ export default function CreateTour() {
       description: String(form.description || "").trim(),
       priceCents,
       difficulty: form.difficulty, // EASY | MEDIUM | HARD
-      status: "ACTIVE",            // default status
+      status: "PUBLISHED",            // default status
     };
 
     try {
