@@ -10,14 +10,17 @@ export default function AddTourReview({ tourId, onReviewAdded }) {
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
+    console.log('Šaljem recenziju:', { tourId, rating, comment });
     if (rating < 1 || rating > 5) return setError("Rating must be 1-5.");
     try {
       setSubmitting(true);
       const review = await ToursAPI.addReview(tourId, { tourId, rating, comment });
+      console.log('Recenzija uspešno dodana:', review);
       setRating(5);
       setComment("");
       if (onReviewAdded) onReviewAdded(review);
     } catch (err) {
+      console.error('Greška pri dodavanju recenzije:', err);
       setError(err?.message || "Failed to submit review.");
     } finally {
       setSubmitting(false);

@@ -103,6 +103,9 @@ export default function Login() {
       setToken(token)
       try { localStorage.setItem('auth_token', token) } catch {}
 
+      // Trigger custom event da App.jsx zna da je token promenjen
+      window.dispatchEvent(new Event('auth-changed'))
+
       const profile = await getProfile().catch(() => null)
       const role = normalizeRole(profile)
 

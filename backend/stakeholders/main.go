@@ -4,16 +4,21 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"stakeholders/grpc"
 	"stakeholders/handler"
+	"stakeholders/pb"
 	"stakeholders/repo"
 	"stakeholders/service"
 	"strings"
+	"sync"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+	grpcLib "google.golang.org/grpc"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -30,18 +35,32 @@ func main() {
 	userService := service.NewUserService(*userRepo, jwtSecret)
 	userHandler := handler.NewUserHandler(userService)
 
-	router := setupRouter(userHandler, jwtSecret)
+	// Start both HTTP and gRPC servers concurrently
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	corsMiddleware := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "Authorization"},
-		AllowCredentials: true,
-		Debug:            true, // ukloniti u produkciji
-	})
+	// Start HTTP server
+	go func() {
+		defer wg.Done()
+		router := setupRouter(userHandler, jwtSecret)
+		corsMiddleware := cors.New(cors.Options{
+			AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173"},
+			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowedHeaders:   []string{"Content-Type", "Authorization"},
+			AllowCredentials: true,
+			Debug:            true, // ukloniti u produkciji
+		})
+		handler := corsMiddleware.Handler(router)
+		startHTTPServer(handler)
+	}()
 
-	handler := corsMiddleware.Handler(router)
-	startServer(handler)
+	// Start gRPC server
+	go func() {
+		defer wg.Done()
+		startGRPCServer(userService)
+	}()
+
+	wg.Wait()
 }
 
 func initializeDatabase() *gorm.DB {
@@ -83,6 +102,9 @@ func logDatabaseStatus(db *gorm.DB) {
 func setupRouter(userHandler *handler.UserHandler, jwtSecret string) *mux.Router {
 	r := mux.NewRouter()
 	r.Use(loggingMiddleware)
+
+	// Static file server for uploaded images
+	r.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir("/app/uploads/"))))
 
 	// javne rute
 	userHandler.RegisterRoutes(r) // /register, /login
@@ -146,11 +168,28 @@ func jwtMiddleware(jwtSecret string) mux.MiddlewareFunc {
 	}
 }
 
-func startServer(handler http.Handler) {
+func startHTTPServer(handler http.Handler) {
 	port := ":8081"
-	log.Printf("Server starting on %s", port)
+	log.Printf("HTTP Server starting on %s", port)
 	if err := http.ListenAndServe(port, handler); err != nil {
-		log.Fatal("Server failed to start: ", err)
+		log.Fatal("HTTP Server failed to start: ", err)
+	}
+}
+
+func startGRPCServer(userService *service.UserService) {
+	port := ":9095"
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("Failed to listen on port %s: %v", port, err)
+	}
+
+	grpcServer := grpcLib.NewServer()
+	stakeholderGrpcService := grpc.NewStakeholderGrpcService(userService)
+	pb.RegisterStakeholderServiceServer(grpcServer, stakeholderGrpcService)
+
+	log.Printf("gRPC Server starting on %s", port)
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("gRPC Server failed to start: %v", err)
 	}
 }
 

@@ -56,8 +56,36 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const isUuid = (s) => typeof s === 'string' && UUID_RE.test(s.trim());
 
-// Fetch current user profile from backend, forwarding auth
+// Fetch current user profile using gRPC, with fallback to HTTP
 async function fetchProfile(req) {
+  // Try to extract user_id from JWT token if available
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const tokenString = authHeader.replace('Bearer ', '');
+      // Simple JWT decode (just extract payload without verification since that's done in the service)
+      const payload = JSON.parse(Buffer.from(tokenString.split('.')[1], 'base64').toString());
+      const userId = payload.user_id;
+      
+      if (userId && stakeholderClient) {
+        // Use gRPC to fetch profile
+        return new Promise((resolve, reject) => {
+          stakeholderClient.GetProfile({ userId }, (err, response) => {
+            if (err) {
+              console.error('[gateway] gRPC GetProfile failed:', err);
+              reject(err);
+            } else {
+              resolve(response.user);
+            }
+          });
+        });
+      }
+    } catch (error) {
+      console.warn('[gateway] Failed to decode JWT or gRPC call:', error);
+    }
+  }
+  
+  // Fallback to HTTP
   const headers = {};
   if (req.headers['authorization'])
     headers['authorization'] = req.headers['authorization'];
@@ -204,7 +232,9 @@ const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const PROTO_DIR =
   process.env.PROTO_DIR || path.join(__dirname, '..', 'proto');
 const TOUR_GRPC_ADDR = process.env.TOUR_GRPC_ADDR || 'tour:9094';
+const STAKEHOLDER_GRPC_ADDR = process.env.STAKEHOLDER_GRPC_ADDR || 'backend:9095';
 
+// Load tour proto
 const tourPkgDef = protoLoader.loadSync(path.join(PROTO_DIR, 'tour.proto'), {
   keepCase: false,
   longs: String,
@@ -214,6 +244,17 @@ const tourPkgDef = protoLoader.loadSync(path.join(PROTO_DIR, 'tour.proto'), {
 });
 const tourProto = grpc.loadPackageDefinition(tourPkgDef);
 const TourService = tourProto.tour?.v1?.TourService;
+
+// Load stakeholder proto
+const stakeholderPkgDef = protoLoader.loadSync(path.join(PROTO_DIR, 'stakeholder.proto'), {
+  keepCase: false,
+  longs: String,
+  enums: String,
+  defaults: true,
+  oneofs: true,
+});
+const stakeholderProto = grpc.loadPackageDefinition(stakeholderPkgDef);
+const StakeholderService = stakeholderProto.stakeholder?.v1?.StakeholderService;
 
 let tourClient = null;
 if (TourService) {
@@ -225,7 +266,68 @@ if (TourService) {
   console.warn('[gateway] WARN: tour.v1.TourService not found in loaded proto.');
 }
 
+let stakeholderClient = null;
+if (StakeholderService) {
+  stakeholderClient = new StakeholderService(
+    STAKEHOLDER_GRPC_ADDR,
+    grpc.credentials.createInsecure(),
+  );
+} else {
+  console.warn('[gateway] WARN: stakeholder.v1.StakeholderService not found in loaded proto.');
+}
+
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
+
+// -------- gRPC-backed routes for stakeholder service --------
+app.post('/auth/login', (req, res) => {
+  if (!stakeholderClient) {
+    return res.status(500).json({ error: 'Stakeholder gRPC client not initialized' });
+  }
+  
+  const { email, password } = req.body || {};
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+
+  const grpcReq = { email, password };
+  stakeholderClient.Login(grpcReq, (err, response) => {
+    if (err) return grpcError(res, err, 'Login failed');
+    res.set('Cache-Control', 'no-store');
+    res.status(200).json({ user: response.user, token: response.token });
+  });
+});
+
+app.get('/auth/me', (req, res) => {
+  if (!stakeholderClient) {
+    return res.status(500).json({ error: 'Stakeholder gRPC client not initialized' });
+  }
+
+  // Extract user_id from JWT token
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization header missing or invalid' });
+  }
+
+  try {
+    const tokenString = authHeader.replace('Bearer ', '');
+    const payload = JSON.parse(Buffer.from(tokenString.split('.')[1], 'base64').toString());
+    const userId = payload.user_id;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'Invalid token: user_id not found' });
+    }
+
+    const grpcReq = { userId };
+    stakeholderClient.GetProfile(grpcReq, (err, response) => {
+      if (err) return grpcError(res, err, 'GetProfile failed');
+      res.set('Cache-Control', 'no-store');
+      res.status(200).json(response.user);
+    });
+  } catch (error) {
+    console.error('[gateway] JWT decode error:', error);
+    return res.status(401).json({ error: 'Invalid token format' });
+  }
+});
 
 // -------- gRPC-backed routes --------
 app.get('/api-tours/tours', (req, res) => {
@@ -290,6 +392,8 @@ app.delete('/api-tours/tours/:id', (req, res) => {
 // …or any other future REST subpaths on the Spring app.
 app.use('/api-tours', (req, _res, next) => {
   console.log(`[GATEWAY] API-TOURS REST PASS ${req.method} ${req.originalUrl}`);
+  console.log(`[GATEWAY] API-TOURS Headers:`, req.headers);
+  console.log(`[GATEWAY] API-TOURS Body:`, req.body);
   next();
 });
 
@@ -312,6 +416,20 @@ app.use(
     {
       target: 'http://tour:8084',
       pathRewrite: { '^/api-tours': '' },
+      changeOrigin: true,
+      onProxyReq: (proxyReq, req) => {
+        // Proslijedi Authorization header
+        const auth = req.headers['authorization'];
+        if (auth) proxyReq.setHeader('authorization', auth);
+        
+        // Za POST/PUT zahteve, proslijedi JSON body
+        if (req.body && (req.method === 'POST' || req.method === 'PUT')) {
+          const bodyData = JSON.stringify(req.body);
+          proxyReq.setHeader('Content-Type', 'application/json');
+          proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+          proxyReq.write(bodyData);
+        }
+      },
       ...commonProxyOpts,
     },
   ),
@@ -335,18 +453,15 @@ app.listen(PORT, () => {
 
 app.use('/purchase', (req, res, next) => {
   console.log(`[GATEWAY] PURCHASE REQUEST: ${req.method} ${req.originalUrl}`);
+  console.log(`[GATEWAY] PURCHASE Headers:`, req.headers);
+  console.log(`[GATEWAY] PURCHASE Body:`, req.body);
   next();
 });
 app.use(
   '/purchase',
-  createProxyMiddleware({
+  jsonForwardingProxy({
     target: PURCHASE_URL,
-    changeOrigin: true,
-    pathRewrite: { '^/purchase': '' },
-    onProxyReq: (proxyReq, req) => {
-      const auth = req.headers['authorization'];
-      if (auth) proxyReq.setHeader('authorization', auth);
-    },
+    rewritePrefix: '^/purchase',
   })
 );
 console.log('[GATEWAY] purchase target =', PURCHASE_URL);

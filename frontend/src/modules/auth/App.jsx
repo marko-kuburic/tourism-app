@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";  
-import { getProfile, normalizeRole } from "./api";  
+import { getProfile } from "./api";  
+import { normalizeRole } from "./roleUtils";
 import TourListForTourist from "../tours/TourListForTourist";  // Importiraj komponentu za turiste
 import Login from './Login.jsx'
 import Register from './Register.jsx'
@@ -14,6 +15,8 @@ import ToursList from '../tours/ToursList.jsx'
 import CreateTour from '../tours/CreateTour.jsx'
 import TourDetails from '../tours/TourDetails.jsx';
 import PositionSimulator from '../position/PositionSimulator.jsx';
+import AuthorDashboard from '../author/AuthorDashboard.jsx';  // ⟵ DODATO
+import MyTours from '../author/MyTours.jsx';  // ⟵ DODATO
 import "../../styles/auth.css";
 import Cart from '../purchase/Cart';
 
@@ -23,12 +26,34 @@ export default function App() {
   const location = useLocation()
   const navigate = useNavigate()
   const [myRole, setMyRole] = useState(null)
+  const [hasToken, setHasToken] = useState(false)
 
-  // Recompute token on mount and after login/logout (localStorage event safety)
-  const hasToken = !!localStorage.getItem('auth_token')
+  // Proveri token kada se komponenta mount-uje i oslušni promene
+  useEffect(() => {
+    const checkToken = () => {
+      const token = !!localStorage.getItem('auth_token')
+      setHasToken(token)
+    }
+    
+    checkToken() // inicijalna provjera
+    
+    // Oslušni promjene u localStorage (radi između tab-ova)
+    window.addEventListener('storage', checkToken)
+    
+    // Dodaj custom event za manual trigger (radi u istom tab-u)
+    window.addEventListener('auth-changed', checkToken)
+    
+    return () => {
+      window.removeEventListener('storage', checkToken)
+      window.removeEventListener('auth-changed', checkToken)
+    }
+  }, [])
 
   useEffect(() => {
-    if (!hasToken) { setMyRole(null); return }
+    if (!hasToken) { 
+      setMyRole(null)
+      return 
+    }
     (async () => {
       try {
         const me = await getProfile()
@@ -50,6 +75,11 @@ export default function App() {
   function onLogout() {
     try { localStorage.removeItem('auth_token') } catch {}
     setMyRole(null)
+    setHasToken(false)  // Eksplicitno resetuj hasToken
+    
+    // Trigger custom event
+    window.dispatchEvent(new Event('auth-changed'))
+    
     navigate('/login', { replace: true })
   }
 
@@ -83,7 +113,7 @@ export default function App() {
                   <Nav className="tab" to="/profile">Profile</Nav>
                   <Nav className="tab" to="/recommendations">Recommendations</Nav>
                   <Nav className="tab" to="/blog" end>Blog</Nav>
-                  <Nav className="tab" to="/blog/new">Create Blog</Nav> {/* ⟵ DODATO */}
+                  <Nav className="tab" to="/blog/new">Create Blog</Nav>
                 </>
               )}
 
@@ -124,6 +154,27 @@ export default function App() {
             <Route path="/blog/:id" element={<BlogDetails />} />
 
             <Route path="/cart" element={<Cart />} />
+            
+            {/* Author/Guide rute */}
+            <Route 
+              path="/author" 
+              element={
+                !hasToken ? <Navigate to="/login" replace /> :
+                isGuide ? <AuthorDashboard /> : 
+                isAdmin ? <Navigate to="/admin/users" replace /> :
+                <Navigate to="/tours" replace />
+              } 
+            />
+            <Route 
+              path="/author/tours" 
+              element={
+                !hasToken ? <Navigate to="/login" replace /> :
+                isGuide ? <MyTours /> : 
+                isAdmin ? <Navigate to="/admin/users" replace /> :
+                <Navigate to="/tours" replace />
+              } 
+            />
+            
             {/* Admin rute – štitimo jednostavnim guardom */}
             <Route
               path="/admin/users"
@@ -151,9 +202,27 @@ export default function App() {
             <Route path="/tours/new" element={<CreateTour />} />
             <Route path="/position-simulator" element={<PositionSimulator/>} />
 
+            {/* Dodaj eksplicitne rute za home stranice */}
+            <Route 
+              path="/" 
+              element={
+                !hasToken ? <Navigate to="/login" replace /> :
+                isAdmin ? <Navigate to="/admin/users" replace /> :
+                isGuide ? <Navigate to="/author" replace /> :
+                isTourist ? <Navigate to="/tours" replace /> :
+                <Navigate to="/login" replace />
+              } 
+            />
+
             <Route
               path="*"
-              element={<Navigate to="/login" replace />}
+              element={
+                !hasToken ? <Navigate to="/login" replace /> :
+                isAdmin ? <Navigate to="/admin/users" replace /> :
+                isGuide ? <Navigate to="/author" replace /> :
+                isTourist ? <Navigate to="/tours" replace /> :
+                <Navigate to="/login" replace />
+              }
             />
           </Routes>
         </div>

@@ -11,6 +11,7 @@ services:
       PORT: 8080
       PURCHASE_URL: http://purchase:8085 
       TOUR_GRPC_ADDR: tour:9094
+      STAKEHOLDER_GRPC_ADDR: backend:9095
       PROTO_DIR: /proto
 
       # --- OpenTelemetry ---
@@ -41,10 +42,11 @@ services:
 
   backend:
     build:
-      context: ./backend/stakeholders
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/stakeholders/Dockerfile
     ports:
       - "8081:8081"
+      - "9095:9095"
     depends_on:
       mysql:
         condition: service_healthy
@@ -67,6 +69,7 @@ services:
       JAVA_TOOL_OPTIONS: -javaagent:/otel/opentelemetry-javaagent.jar
     volumes:
       - ./monitoring/otel/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar:ro
+      - stakeholder_uploads:/app/uploads
     restart: unless-stopped
     labels:
       - "compose.service=backend"
@@ -244,7 +247,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      VITE_AUTH_API_URL:     http://localhost:8080/auth
+      VITE_AUTH_API_URL: http://localhost:8080/auth
       VITE_API_BASE_URL: http://localhost:8081
       VITE_FOLLOWING_API_URL: http://localhost:8083
       VITE_BLOG_API_URL: http://localhost:8082
@@ -313,4 +316,5 @@ volumes:
   mysql_data:
   tour_mysql_data:
   neo4j_data:
+  stakeholder_uploads:
   purchase_db:

@@ -1,0 +1,45 @@
+syntax = "proto3";
+package stakeholder.v1;
+
+option go_package = "./pb";
+
+// User message representing the user profile
+message User {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  string role = 4;
+  string first_name = 5;
+  string last_name = 6;
+  string profile_picture = 7;
+  string biography = 8;
+  string motto = 9;
+}
+
+// Login request message
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+// Login response message
+message LoginResponse {
+  User user = 1;
+  string token = 2;
+}
+
+// Get profile request message (uses JWT token for authentication)
+message GetProfileRequest {
+  string user_id = 1; // extracted from JWT token
+}
+
+// Get profile response message
+message GetProfileResponse {
+  User user = 1;
+}
+
+// Stakeholder service definition
+service StakeholderService {
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+}

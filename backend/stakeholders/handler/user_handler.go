@@ -3,13 +3,17 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"stakeholders/model"
 	"stakeholders/service"
 	"strings"
 	"errors" 
-
+	"time"
 
 	"github.com/google/uuid" 
 	"github.com/gorilla/mux"
@@ -38,6 +42,7 @@ func (h *UserHandler) RegisterRoutes(router *mux.Router) {
 func (h *UserHandler) RegisterProtectedRoutes(router *mux.Router) {
 	router.HandleFunc("/me", h.getMe).Methods("GET")
 	router.HandleFunc("/me", h.updateMe).Methods("PUT")
+	router.HandleFunc("/upload-profile-picture", h.uploadProfilePicture).Methods("POST")
 }
 
 type registerRequest struct {
@@ -308,4 +313,69 @@ func userIDFromCtx(ctx context.Context) (uuid.UUID, bool) {
 	raw, _ := ctx.Value("user_id").(string)
 	id, err := uuid.Parse(raw)
 	return id, err == nil
+}
+
+func (h *UserHandler) uploadProfilePicture(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromCtx(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse multipart form
+	err := r.ParseMultipartForm(10 << 20) // 10 MB max
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Unable to parse form")
+		return
+	}
+
+	file, handler, err := r.FormFile("profile_picture")
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Unable to get file from form")
+		return
+	}
+	defer file.Close()
+
+	// Validate file type
+	if !strings.HasPrefix(handler.Header.Get("Content-Type"), "image/") {
+		respondWithError(w, http.StatusBadRequest, "File must be an image")
+		return
+	}
+
+	// Create uploads directory if it doesn't exist
+	uploadsDir := "/app/uploads"
+	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+		log.Printf("Error creating uploads directory: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Unable to create uploads directory")
+		return
+	}
+
+	// Generate unique filename
+	ext := filepath.Ext(handler.Filename)
+	if ext == "" {
+		ext = ".jpg" // default extension
+	}
+	filename := fmt.Sprintf("%s_%d%s", userID.String(), time.Now().Unix(), ext)
+	filePath := filepath.Join(uploadsDir, filename)
+
+	// Create the file
+	dst, err := os.Create(filePath)
+	if err != nil {
+		log.Printf("Error creating file: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Unable to create file")
+		return
+	}
+	defer dst.Close()
+
+	// Copy file content
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		log.Printf("Error copying file: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Unable to save file")
+		return
+	}
+
+	// Return the file path that can be used to access the image
+	fileURL := fmt.Sprintf("/uploads/%s", filename)
+	respondWithJSON(w, http.StatusOK, map[string]string{"file_path": fileURL})
 }
