@@ -2,12 +2,18 @@
 const ROOT = (import.meta?.env?.VITE_API_BASE_URL) || 'http://localhost:8080';
 const API_BASE = `${ROOT}/api-tours`;
 
+console.log('ToursAPI BASE URL:', API_BASE);
+
 function authHeader() {
   const t = localStorage.getItem('auth_token');
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
 async function apiFetch(path, options = {}) {
+  console.log('apiFetch pozvan sa path:', path);
+  console.log('apiFetch API_BASE:', API_BASE);
+  console.log('apiFetch finalni URL:', `${API_BASE}${path}`);
+  
   const headers = {
     'Content-Type': 'application/json',
     ...authHeader(),
@@ -68,7 +74,10 @@ export const ToursAPI = {
       return apiFetch(`/tours/${tourId}/reviews`);
     },
     addReview(tourId, body) {
-      return apiFetch(`/tours/${tourId}/reviews`, { method: 'POST', body: JSON.stringify(body) });
+      console.log('addReview pozvan sa:', { tourId, body });
+      const url = `/tours/${tourId}/reviews`;
+      console.log('addReview URL:', url);
+      return apiFetch(url, { method: 'POST', body: JSON.stringify(body) });
     },
 
     listPublic() {
