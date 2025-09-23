@@ -1,9 +1,10 @@
 package com.example.tour.service;
-
 import com.example.tour.dto.CreateKeyPointRequest;
 import com.example.tour.dto.KeyPointResponse;
 import com.example.tour.dto.UpdateKeyPointRequest;
 import com.example.tour.model.KeyPoint;
+import com.example.tour.repo.KeyPointRepository;
+import com.example.tour.repo.TourRepository;
 import com.example.tour.model.Tour;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

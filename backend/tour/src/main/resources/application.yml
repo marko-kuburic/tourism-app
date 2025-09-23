@@ -25,8 +25,12 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0=}  # isti kao u Go servisima
+    secret: ${JWT_SECRET:JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0=} 
 
+grpc:                     
+  server:
+    port: 9094
+    address: 0.0.0.0 
 logging:
   level:
     org.hibernate.SQL: debug
@@ -36,6 +40,7 @@ logging:
     com.example.tour.security: TRACE
     io.jsonwebtoken: DEBUG
     org.springframework.web: DEBUG
+    net.devh.boot.grpc: DEBUG
 
 management:
   endpoints:

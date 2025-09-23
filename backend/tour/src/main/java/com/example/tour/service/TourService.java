@@ -3,6 +3,8 @@ package com.example.tour.service;
 
 import com.example.tour.dto.CreateTourRequest;
 import com.example.tour.dto.TourResponse;
+import com.example.tour.model.Tour;
+import com.example.tour.repo.TourRepository;
 import com.example.tour.dto.TourPublicResponse;
 import com.example.tour.model.Status;
 import com.example.tour.model.Tour;
@@ -61,7 +63,7 @@ public class TourService {
                 .name(req.getName())
                 .description(req.getDescription())
                 .difficulty(req.getDifficulty())
-                .status(Status.DRAFT)
+                .status(req.getStatus())
                 .priceCents(req.getPriceCents())
                 .tags(req.getTags() == null ? new HashSet<>() : new HashSet<>(req.getTags()))
                 .build();
@@ -72,12 +74,18 @@ public class TourService {
 
     @Transactional(readOnly = true)
     public List<TourResponse> listMine(UUID authorId) {
-        return repo.findAllByAuthorId(authorId)
+        return repo.findByAuthorId(authorId)
                 .stream()
                 .map(this::toDto)
                 .toList();
     }
 
+    @Transactional
+    public void delete(UUID id) {
+        if (repo.existsById(id)) {
+            repo.deleteById(id);
+        }
+    } 
 
     private TourResponse toDto(Tour t) {
         return TourResponse.builder()

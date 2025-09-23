@@ -17,9 +17,18 @@ services:
       - tour
       - purchase
     restart: unless-stopped
+
     networks:
       - default                     # <— gateway ostaje i na default mreži (za ostale servise)
       - appnet  
+
+    environment:
+      - TOUR_GRPC_ADDR=tour:9094
+      - PROTO_DIR=/proto
+    volumes:
+      - ./proto:/proto:ro
+
+
   backend:
     build:
       context: ./backend/stakeholders
@@ -82,7 +91,7 @@ services:
       - "8082:8080"
     restart: unless-stopped
 
-  # --- KT2 #10: Tour servis (Java + Spring Boot + MySQL) ---
+  # --- Tour servis (Java + Spring Boot + MySQL) ---
   tour-mysql:
     image: mysql:8.0
     environment:
@@ -99,19 +108,24 @@ services:
 
   tour:
     build:
-      context: ./backend/tour
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/tour/Dockerfile
     environment:
       DB_URL: "jdbc:mysql://tour-mysql:3306/tourdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
       DB_USER: "root"
       DB_PASSWORD: "password"
       JWT_SECRET: "JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0="
+
       PURCHASE_BASE_URL: http://purchase:8085
+
+      GRPC_SERVER_PORT: "9094"
+
     depends_on:
       tour-mysql:
         condition: service_healthy
     ports:
       - "8084:8084"
+      - "9094:9094"
 
   following:
     build:
@@ -154,9 +168,10 @@ services:
       VITE_API_BASE_URL: http://localhost:8081
       VITE_FOLLOWING_API_URL: http://localhost:8083
       VITE_BLOG_API_URL: http://localhost:8082
-      #VITE_TOURS_API_URL: http://localhost:8084
       VITE_TOURS_API_URL: http://localhost:8080/tour
       VITE_PURCHASE_API_URL: http://localhost:8080/purchase  
+      #VITE_TOURS_API_URL: http://localhost:8080/api-tours
+
     depends_on:
       backend:
         condition: service_started

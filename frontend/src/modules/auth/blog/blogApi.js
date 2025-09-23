@@ -1,6 +1,6 @@
 const blogBaseUrl =
   (import.meta && import.meta.env && import.meta.env.VITE_BLOG_API_URL) ||
-  'http://localhost:8080';
+  '/api/blog'; // <-- default kroz gateway
 
 function getAuthHeaders() {
   const token = localStorage.getItem('auth_token');
@@ -10,7 +10,6 @@ function getAuthHeaders() {
   };
 }
 
-
 async function parseJsonSafe(res) {
   const text = await res.text();
   if (!text) return null;
@@ -18,7 +17,18 @@ async function parseJsonSafe(res) {
 }
 
 export async function getBlogFeed(limit = 50) {
+  // Zadržano radi kompatibilnosti (kao pre) – javna lista /blogs
   const res = await fetch(`${blogBaseUrl}/blogs?limit=${encodeURIComponent(limit)}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(`Failed to load feed (${res.status})`);
+  return res.json();
+}
+
+// NOVO: eksplicitni feed sa following logikom (JWT obavezan) -> /blogs/feed
+export async function getFeed(limit = 50) {
+  const res = await fetch(`${blogBaseUrl}/blogs/feed?limit=${encodeURIComponent(limit)}`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -42,6 +52,21 @@ export async function getBlog(id) {
   });
   if (!res.ok) throw new Error(`Failed to load blog (${res.status})`);
   return res.json();
+}
+
+// NOVO: kreiranje bloga
+export async function createBlog({ title, description_md, images = [] }) {
+  const res = await fetch(`${blogBaseUrl}/blogs`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ title, description_md, images }),
+  });
+  if (!res.ok) {
+    let err = {};
+    try { err = await res.json(); } catch {}
+    throw new Error(err.error || err.message || `Failed to create blog (${res.status})`);
+  }
+  return res.json(); // očekuje se ceo Blog
 }
 
 export async function listComments(blogId) {
@@ -71,14 +96,14 @@ export async function like(blogId) {
   const res = await fetch(`${blogBaseUrl}/blogs/${encodeURIComponent(blogId)}/like`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({}), // ok je i bez body-ja
+    body: JSON.stringify({}), // ok i bez body-ja
   });
   if (!res.ok) {
     let err = {};
     try { err = await res.json(); } catch {}
     throw new Error(err.error || `Failed to like (${res.status})`);
   }
-  return parseJsonSafe(res); // može biti null i to je ok
+  return parseJsonSafe(res); // često 204, pa vraćamo null
 }
 
 export async function unlike(blogId) {
@@ -96,7 +121,7 @@ export async function unlike(blogId) {
 
 export async function updateComment(blogId, commentId, text) {
   const res = await fetch(`${blogBaseUrl}/blogs/${encodeURIComponent(blogId)}/comments/${encodeURIComponent(commentId)}`, {
-    method: 'PATCH', // ili PUT ako tako radi backend
+    method: 'PATCH', // ili PUT, ali handler prima PATCH
     headers: getAuthHeaders(),
     body: JSON.stringify({ text }),
   });
@@ -105,7 +130,6 @@ export async function updateComment(blogId, commentId, text) {
     try { err = await res.json(); } catch {}
     throw new Error(err.error || `Failed to update comment (${res.status})`);
   }
-  // mnogi backend-i vraćaju updated komentar; ako ne, vrati minimalno što imaš
   try { return await res.json(); } catch { return { id: commentId, text }; }
 }
 

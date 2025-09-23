@@ -15,6 +15,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        type:
+          preferred_uuid_jdbc_type: CHAR
 
   flyway:
     enabled: true
@@ -23,11 +25,18 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0=}  # isti kao u Go servisima
+    secret: ${JWT_SECRET:JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0=} 
+
 
 purchase:
   base-url: ${PURCHASE_BASE_URL:http://purchase:8085}
 
+
+grpc:                     
+  server:
+    port: 9094 
+    reflectionServiceEnabled: true
+    
 logging:
   level:
     org.hibernate.SQL: debug
@@ -37,3 +46,10 @@ logging:
     com.example.tour.security: TRACE
     io.jsonwebtoken: DEBUG
     org.springframework.web: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
