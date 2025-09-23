@@ -226,6 +226,7 @@ if (TourService) {
 
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
+// -------- gRPC-backed routes --------
 app.get('/api-tours/tours', (req, res) => {
   if (!tourClient)
     return res.status(500).json({ error: 'Tour gRPC client not initialized' });
@@ -279,6 +280,41 @@ app.delete('/api-tours/tours/:id', (req, res) => {
     res.status(204).end();
   });
 });
+
+// -------- REST pass-through for everything else under /api-tours/* --------
+// Keep old working REST endpoints like:
+//   GET  /api-tours/tours/:id
+//   GET  /api-tours/tours/:id/reviews
+//   POST /api-tours/tours/:id/reviews
+// …or any other future REST subpaths on the Spring app.
+app.use('/api-tours', (req, _res, next) => {
+  console.log(`[GATEWAY] API-TOURS REST PASS ${req.method} ${req.originalUrl}`);
+  next();
+});
+
+// Use the proxy *only if* the request is NOT one of our gRPC routes above
+app.use(
+  '/api-tours',
+  createProxyMiddleware(
+    (pathname, req) => {
+      // exact /api-tours/tours (GET list or POST create) => handled by gRPC
+      if (pathname === '/api-tours/tours' && (req.method === 'GET' || req.method === 'POST')) {
+        return false;
+      }
+      // DELETE /api-tours/tours/:id => handled by gRPC
+      if (req.method === 'DELETE' && /^\/api-tours\/tours\/[^/]+$/.test(pathname)) {
+        return false;
+      }
+      // everything else => pass through to Spring REST
+      return true;
+    },
+    {
+      target: 'http://tour:8084',
+      pathRewrite: { '^/api-tours': '' },
+      ...commonProxyOpts,
+    },
+  ),
+);
 
 function grpcError(res, err, msg, requestId) {
   res.status(502).json({
