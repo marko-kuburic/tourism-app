@@ -84,6 +84,9 @@ func setupRouter(userHandler *handler.UserHandler, jwtSecret string) *mux.Router
 	r := mux.NewRouter()
 	r.Use(loggingMiddleware)
 
+	// Static file server for uploaded images
+	r.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir("/app/uploads/"))))
+
 	// javne rute
 	userHandler.RegisterRoutes(r) // /register, /login
 
