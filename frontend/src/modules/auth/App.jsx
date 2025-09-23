@@ -8,6 +8,7 @@ import Recommendations from './Recommendations.jsx'
 import AdminUsers from './AdminUsers.jsx'
 import BlogFeed from './blog/BlogFeed.jsx'
 import BlogDetails from './blog/BlogDetails.jsx'
+import CreateBlog from './blog/CreateBlog.jsx'         // ⟵ DODATO
 import ToursList from '../tours/ToursList.jsx'
 import CreateTour from '../tours/CreateTour.jsx'
 import TourDetails from '../tours/TourDetails.jsx';
@@ -78,6 +79,7 @@ export default function App() {
                   <Nav className="tab" to="/profile">Profile</Nav>
                   <Nav className="tab" to="/recommendations">Recommendations</Nav>
                   <Nav className="tab" to="/blog" end>Blog</Nav>
+                  <Nav className="tab" to="/blog/new">Create Blog</Nav> {/* ⟵ DODATO */}
                 </>
               )}
 
@@ -101,6 +103,7 @@ export default function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/recommendations" element={<Recommendations />} />
             <Route path="/blog" element={<BlogFeed />} />
+            <Route path="/blog/new" element={<CreateBlog />} />   {/* ⟵ DODATO */}
             <Route path="/blog/:id" element={<BlogDetails />} />
 
             <Route path="/admin/users" element={<AdminUsers />} />
@@ -110,7 +113,6 @@ export default function App() {
 
             <Route path="/tours/:id" element={<TourDetails/>} />
             <Route path="/position-simulator" element={<PositionSimulator/>} />
-
 
             <Route
               path="*"
