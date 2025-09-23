@@ -77,3 +77,44 @@ npm run dev
 - Blog service: Go + MongoDB
 - Both services include JWT authentication
 
+
+### Seed demo data (users + followings)
+
+We provide a small Node.js script to populate the stakeholders (users) and following (graph) services:
+
+- Creates TOTAL_USERS (default 50) across roles: admins, guides, tourists
+- Logs them in to obtain tokens
+- Creates randomized follow relationships among them in Neo4j via the following service
+
+Prereqs:
+- Backend services up (stakeholders on 8081, following on 8083)
+- Node 18+ on your host (or run via docker container, see optional below)
+
+Run locally:
+
+```
+BACKEND_URL=http://localhost:8081 \
+FOLLOWING_URL=http://localhost:8083 \
+TOTAL_USERS=50 ADMIN_COUNT=2 GUIDE_COUNT=8 \
+node scripts/seed-users-following.js
+```
+
+Environment variables:
+- BACKEND_URL (default http://localhost:8081)
+- FOLLOWING_URL (default http://localhost:8083)
+- TOTAL_USERS (default 50)
+- ADMIN_COUNT (default 2)
+- GUIDE_COUNT (default 8)
+- FOLLOWS_MIN (default 3)
+- FOLLOWS_MAX (default 10)
+
+Optional: run inside a container on the same Docker network. Example using the default published ports:
+
+```
+docker run --rm -it \
+	-v "$PWD":/work -w /work \
+	--network host \
+	node:20 \
+	bash -lc "node -v && BACKEND_URL=http://localhost:8081 FOLLOWING_URL=http://localhost:8083 node scripts/seed-users-following.js"
+```
+
