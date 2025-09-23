@@ -1,7 +1,5 @@
-// src/modules/tours/ToursApi.js
 
 const ROOT = (import.meta?.env?.VITE_API_BASE_URL) || 'http://localhost:8080';
-// Use /api-tours for the gRPC bridge, not /api/tour (REST)
 const API_BASE = `${ROOT}/api-tours`;
 
 function authHeader() {
@@ -65,16 +63,26 @@ export const ToursAPI = {
   remove(id) {
     return apiFetch(`/tours/${id}`, { method: 'DELETE' });
   },
+    // Reviews
+    getReviews(tourId) {
+      return apiFetch(`/tours/${tourId}/reviews`);
+    },
+    addReview(tourId, body) {
+      return apiFetch(`/tours/${tourId}/reviews`, { method: 'POST', body: JSON.stringify(body) });
+    },
 
-  // Optional reviews if you implement them in the same service
-  getReviews(tourId) {
-    return apiFetch(`/tours/${tourId}/reviews`);
-  },
+    listPublic() {
+      return apiFetch(`/tours/public`);
+    },
 
-  addReview(tourId, body) {
-    return apiFetch(`/tours/${tourId}/reviews`, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
-  },
+    publish(id, body) {
+      return apiFetch(`/tours/${id}/publish`, { method: 'POST', body: JSON.stringify(body) });
+    },
+    archive(id) {
+      return apiFetch(`/tours/${id}/archive`, { method: 'POST' });
+    },
+    unarchive(id) {
+      return apiFetch(`/tours/${id}/unarchive`, { method: 'POST' });
+    }
+
 };
