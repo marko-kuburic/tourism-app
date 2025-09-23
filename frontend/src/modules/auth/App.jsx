@@ -87,7 +87,7 @@ export default function App() {
                 <Nav className="tab" to="/tours" end>Tours</Nav>
               )}
               {isTourist && (
-                <Nav className="tab" to="/cart">Korpa</Nav>
+                <Nav className="tab" to="/cart">Cart</Nav>
               )}
 
 

@@ -23,7 +23,7 @@ func NewTourClient(base string) *TourClient {
 type PublicTour struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
-	Status     string `json:"status"`
+	//Status     string `json:"status"`
 	PriceCents int64  `json:"priceCents"`
 }
 
