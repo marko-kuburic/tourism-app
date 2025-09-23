@@ -3,6 +3,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const PURCHASE_URL = process.env.PURCHASE_URL || 'http://purchase:8085';
 
 
 
@@ -56,3 +57,21 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`API Gateway started on port ${PORT}`);
 });
+
+app.use('/purchase', (req, res, next) => {
+  console.log(`[GATEWAY] PURCHASE REQUEST: ${req.method} ${req.originalUrl}`);
+  next();
+});
+app.use(
+  '/purchase',
+  createProxyMiddleware({
+    target: PURCHASE_URL,
+    changeOrigin: true,
+    pathRewrite: { '^/purchase': '' },
+    onProxyReq: (proxyReq, req) => {
+      const auth = req.headers['authorization'];
+      if (auth) proxyReq.setHeader('authorization', auth);
+    },
+  })
+);
+console.log('[GATEWAY] purchase target =', PURCHASE_URL);

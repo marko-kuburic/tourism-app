@@ -101,4 +101,18 @@ public class KeyPointService {
                 kp.getUpdatedAt()
         );
     }
+
+    @Transactional(readOnly = true)
+    public List<KeyPointResponse> listFirst(UUID tourId) {
+        return keyRepo.findByTourIdOrderBySeqAsc(tourId)
+                    .stream().limit(1).map(this::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isAuthor(UUID tourId, UUID userId) {
+        return tourRepo.findById(tourId)
+                    .map(t -> userId != null && userId.equals(t.getAuthorId()))
+                    .orElse(false);
+    }
+
 }

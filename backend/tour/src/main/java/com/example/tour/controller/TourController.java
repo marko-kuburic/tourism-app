@@ -95,4 +95,10 @@ public class TourController {
         if (uidAttr != null) return UUID.fromString(String.valueOf(uidAttr));
         throw new IllegalStateException("Missing userId in request (gateway should set it).");
     }
+
+    @GetMapping("/{id}/public")
+    public ResponseEntity<TourPublicResponse> publicOne(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.publicById(id));
+    }
+
 }

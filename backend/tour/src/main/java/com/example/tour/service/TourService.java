@@ -178,4 +178,14 @@ public class TourService {
         );
     }
 
+   @Transactional(readOnly = true)
+    public TourPublicResponse publicById(UUID id) {
+        var t = repo.findById(id).orElseThrow(() -> new EntityNotFoundException("Tour not found"));
+        if (t.getStatus() != Status.PUBLISHED) {
+            throw new IllegalStateException("Not published");
+        }
+        return toPublicDto(t); // izdvoj ovu map-funkciju koju već koristiš za listu
+    }
+
+
 }

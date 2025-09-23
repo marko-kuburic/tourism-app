@@ -7,12 +7,19 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    environment:
+      PORT: 8080
+      PURCHASE_URL: http://purchase:8085 
     depends_on:
       - backend
       - blog
       - following
       - tour
+      - purchase
     restart: unless-stopped
+    networks:
+      - default                     # <— gateway ostaje i na default mreži (za ostale servise)
+      - appnet  
   backend:
     build:
       context: ./backend/stakeholders
@@ -99,6 +106,7 @@ services:
       DB_USER: "root"
       DB_PASSWORD: "password"
       JWT_SECRET: "JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0="
+      PURCHASE_BASE_URL: http://purchase:8085
     depends_on:
       tour-mysql:
         condition: service_healthy
@@ -145,14 +153,49 @@ services:
       VITE_API_BASE_URL: http://localhost:8081
       VITE_FOLLOWING_API_URL: http://localhost:8083
       VITE_BLOG_API_URL: http://localhost:8082
-      VITE_TOURS_API_URL: http://localhost:8084
+      #VITE_TOURS_API_URL: http://localhost:8084
+      VITE_TOURS_API_URL: http://localhost:8080/tour
+      VITE_PURCHASE_API_URL: http://localhost:8080/purchase  
     depends_on:
       backend:
         condition: service_started
     restart: unless-stopped
+  
+  purchase:
+    build: ./backend/purchase
+    environment:
+      DB_DSN: root:password@tcp(purchase-mysql:3306)/purchasedb?parseTime=true&charset=utf8mb4&loc=Local
+      JWT_SECRET: "JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0="
+      #TOUR_BASE_URL: http://tour:8084
+      TOUR_BASE_URL: http://gateway:8080/tour
+    depends_on: 
+      - purchase-mysql
+      - tour
+    ports: 
+      - "8085:8085"
+    networks: 
+      - appnet
+
+  purchase-mysql:
+    image: mysql:8
+    environment:
+      MYSQL_DATABASE: purchasedb
+      MYSQL_ROOT_PASSWORD: password
+    ports:
+      - "3308:3306"
+    volumes:
+      - purchase_db:/var/lib/mysql
+    networks:
+      - appnet
+
+
+networks:
+  appnet:
+    driver: bridge
 
 volumes:
   mongo_data:
   mysql_data:
   tour_mysql_data:
   neo4j_data:
+  purchase_db:
