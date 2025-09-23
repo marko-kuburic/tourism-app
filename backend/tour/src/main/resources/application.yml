@@ -48,3 +48,6 @@ management:
       exposure:
         include: health,info
 
+purchase:
+  base-url: ${PURCHASE_BASE_URL:http://purchase:8085}
+

@@ -1,48 +1,90 @@
-// // src/modules/tours/TourListForTourists.jsx
 // import React, { useEffect, useState } from "react";
-// import { Link } from "react-router-dom";
-// import { ToursAPI } from "./ToursApi"; // tvoja funkcija za dobavljanje tura
-// import { KeyPointsAPI } from "./KeyPointsApi"; // API za dobijanje ključnih tačaka
-// import "../../styles/tours.css"; // tvoja stilizacija
-// import AddTourReview from "./AddTourReview"; // Komponenta za dodavanje recenzija
+// import { ToursAPI } from "./ToursApi";
+// import "../../styles/tours.css";
+// import AddTourReview from "./AddTourReview";
+// import { PurchaseAPI } from "../purchase/PurchaseApi";
+// import OwnedBadge from "./OwnedBadge";
 
 // function centsToMoney(cents) {
 //   if (cents == null || Number.isNaN(Number(cents))) return "-";
 //   return (Number(cents) / 100).toFixed(2);
 // }
 
+// // Jedino dugme za korpu – menja se u "Tura je u korpi"
+// function AddToCartBtn({ tourId }) {
+//   const [busy, setBusy] = React.useState(false);
+//   const [inCart, setInCart] = React.useState(false);
+
+//   // Pre-mount provera da li je već u korpi (da bi radilo i posle refresh-a)
+//   React.useEffect(() => {
+//     let alive = true;
+//     PurchaseAPI.getCart()
+//       .then(c =>
+//         alive && setInCart(Array.isArray(c.items) && c.items.some(i => i.tourId === tourId))
+//       )
+//       .catch(() => {}); // ako kart API ne radi, samo prikaži dugme
+//     return () => { alive = false; };
+//   }, [tourId]);
+
+//   const add = async () => {
+//     try {
+//       setBusy(true);
+//       await PurchaseAPI.addItem(tourId);
+//       setInCart(true);
+//     } catch (e) {
+//       const msg = (e?.message || "").toLowerCase();
+//       if (msg.includes("already")) {
+//         setInCart(true);
+//       } else {
+//         alert(e.message || "Greška");
+//       }
+//     } finally {
+//       setBusy(false);
+//     }
+//   };
+
+//   if (inCart) {
+//     return (
+//       <span
+//         className="t-pill"
+//         style={{
+//           padding: "4px 10px",
+//           borderRadius: 999,
+//           background: "#e0f2fe",
+//           color: "#075985",
+//           fontSize: 12,
+//           fontWeight: 600,
+//         }}
+//       >
+//         Tura je u korpi
+//       </span>
+//     );
+//   }
+
+//   return (
+//     <button className="t-btn" disabled={busy} onClick={add}>
+//       {busy ? "Dodajem…" : "Dodaj u korpu"}
+//     </button>
+//   );
+// }
+
 // export default function TourListForTourists() {
 //   const [tours, setTours] = useState([]);
 //   const [loading, setLoading] = useState(true);
 //   const [err, setErr] = useState("");
-//   const [keyPoints, setKeyPoints] = useState({}); // Držimo ključne tačke po ID-u ture
 
 //   useEffect(() => {
 //     async function loadTours() {
 //       try {
 //         setLoading(true);
-//         const data = await ToursAPI.list(); // Dobavljanje svih tura
+//         const data = await ToursAPI.listPublic(); // PUBLISHED + prva ključna tačka
 //         setTours(Array.isArray(data) ? data : []);
-
-//         // Dohvatimo ključne tačke na osnovu tura
-//         const keyPointsData = await Promise.all(
-//           data.map((tour) => KeyPointsAPI.list(tour.id))  // Koristi novu funkciju za dohvatanje ključnih tačaka
-//         );
-        
-//         // Mapiramo ključne tačke prema ID-ovima tura
-//         const keyPointsMap = {};
-//         keyPointsData.forEach((keyPoint, index) => {
-//           keyPointsMap[data[index].id] = keyPoint; // Povezujemo ključne tačke sa ID-jem ture
-//         });
-
-//         setKeyPoints(keyPointsMap); // Postavljamo ključne tačke u state
 //       } catch (e) {
 //         setErr(e.message || "Failed to load tours.");
 //       } finally {
 //         setLoading(false);
 //       }
 //     }
-
 //     loadTours();
 //   }, []);
 
@@ -62,8 +104,7 @@
 //     );
 //   }
 
-//   // Filtriranje tura da prikazemo samo objavljene (ne DRAFT)
-//   const publishedTours = tours.filter(tour => tour.status == "DRAFT");
+//   const publishedTours = tours;
 
 //   return (
 //     <div className="t-container">
@@ -73,35 +114,117 @@
 //       ) : (
 //         <div className="t-grid-cards">
 //           {publishedTours.map((tour) => {
-//             // Prikazujemo samo osnovne informacije + prvu ključnu tačku
-//             const firstPoint = keyPoints[tour.id] && keyPoints[tour.id][0]; // Dohvatanje prve ključne tačke za tu turu
+//             const firstPoint = tour.firstKeyPointName
+//               ? {
+//                   name: tour.firstKeyPointName,
+//                   lat: tour.firstKeyPointLat,
+//                   lng: tour.firstKeyPointLng,
+//                   imageUrl: tour.firstKeyPointImageUrl,
+//                 }
+//               : null;
+
 //             return (
 //               <article key={tour.id} className="t-card">
+//                 {/* Slika prve ključne tačke (ako postoji) */}
+//                 {firstPoint?.imageUrl ? (
+//                   <img
+//                     src={firstPoint.imageUrl}
+//                     alt={firstPoint.name || tour.name}
+//                     className="t-card-cover"
+//                     style={{ width: "100%", height: 160, objectFit: "cover" }}
+//                   />
+//                 ) : (
+//                   <div
+//                     className="t-card-cover"
+//                     style={{
+//                       width: "100%",
+//                       height: 160,
+//                       background: "#f3f4f6",
+//                       display: "flex",
+//                       alignItems: "center",
+//                       justifyContent: "center",
+//                       color: "#6b7280",
+//                       fontSize: 14,
+//                     }}
+//                   >
+//                     No image
+//                   </div>
+//                 )}
+
 //                 <header className="t-card-head">
-//                   <h2 className="t-card-title">{tour.name}</h2>
-//                   <span className="t-badge">{tour.status || "DRAFT"}</span>
+//                   <h2 className="t-card-title">
+//                     {tour.name} <OwnedBadge tourId={tour.id} />
+//                   </h2>
+//                   <span className="t-badge">PUBLISHED</span>
 //                 </header>
 
 //                 <div className="t-meta">
+//                   <span>Difficulty: {tour.difficulty}</span>
+//                   <span> · </span>
 //                   <span>Price: € {centsToMoney(tour.priceCents)}</span>
+//                   {tour.lengthKm != null && (
+//                     <>
+//                       <span> · </span>
+//                       <span>Length: {tour.lengthKm.toFixed(1)} km</span>
+//                     </>
+//                   )}
 //                 </div>
 
 //                 {/* Prva ključna tačka */}
 //                 {firstPoint && (
 //                   <div className="t-desc">
-//                     <strong>First Key Point: </strong>{firstPoint.name}
+//                     <strong>Start: </strong>
+//                     {firstPoint.name}
+//                     {firstPoint.lat != null && firstPoint.lng != null && (
+//                       <>
+//                         {" "}
+//                         ({Number(firstPoint.lat).toFixed(4)},{" "}
+//                         {Number(firstPoint.lng).toFixed(4)})
+//                       </>
+//                     )}
 //                   </div>
 //                 )}
 
-//                 {/* Forma za dodavanje recenzije — samo za turiste */}
-//                 <div className="add-review">
+//                 {/* Durations (WALK/BIKE/CAR) */}
+//                 {tour.durations && Object.keys(tour.durations).length > 0 && (
+//                   <div
+//                     className="t-durations"
+//                     style={{
+//                       marginTop: 8,
+//                       display: "flex",
+//                       gap: 8,
+//                       flexWrap: "wrap",
+//                     }}
+//                   >
+//                     {Object.entries(tour.durations).map(([k, v]) => (
+//                       <span
+//                         key={k}
+//                         className="t-pill"
+//                         style={{
+//                           padding: "2px 8px",
+//                           borderRadius: 999,
+//                           background: "#eef2ff",
+//                           color: "#111827",
+//                           fontSize: 12,
+//                         }}
+//                       >
+//                         {k}: {v} min
+//                       </span>
+//                     ))}
+//                   </div>
+//                 )}
+
+//                 {/* Jedino dugme za korpu */}
+//                 <div className="t-actions" style={{ marginTop: 10, display: "flex", gap: 8 }}>
+//                   <AddToCartBtn tourId={tour.id} />
+//                 </div>
+
+//                 {/* Recenzije */}
+//                 <div className="add-review" style={{ marginTop: 14 }}>
 //                   <h3>Add Review</h3>
 //                   <AddTourReview
 //                     tourId={tour.id}
-//                     onReviewAdded={(review) => {
-//                       // Ovdje možete dodati logiku za dodavanje recenzije
-//                       // Možeš ažurirati stanje tura da odražava nove recenzije
-//                     }}
+//                     onReviewAdded={() => { /* hook po potrebi */ }}
 //                   />
 //                 </div>
 //               </article>
@@ -112,18 +235,100 @@
 //     </div>
 //   );
 // }
-
 // src/modules/tours/TourListForTourists.jsx
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { ToursAPI } from "./ToursApi"; // tvoja funkcija za dobavljanje tura
-import { KeyPointsAPI } from "./KeyPointsApi"; // API za dobijanje ključnih tačaka (više ne koristimo ovde)
-import "../../styles/tours.css"; // tvoja stilizacija
-import AddTourReview from "./AddTourReview"; // Komponenta za dodavanje recenzija
+import { ToursAPI } from "./ToursApi";
+import "../../styles/tours.css";
+import AddTourReview from "./AddTourReview";
+import { PurchaseAPI } from "../purchase/PurchaseApi";
 
 function centsToMoney(cents) {
   if (cents == null || Number.isNaN(Number(cents))) return "-";
   return (Number(cents) / 100).toFixed(2);
+}
+
+// Jedino dugme: menja se u "Tura je u korpi" ili "Kupljeno"
+function AddToCartBtn({ tourId }) {
+  const [busy, setBusy] = React.useState(false);
+  const [inCart, setInCart] = React.useState(false);
+  const [owned, setOwned] = React.useState(false);
+
+  React.useEffect(() => {
+    let alive = true;
+    // 1) vlasništvo — koristi isti API kao raniji OwnedBadge
+    PurchaseAPI.hasOwnership(tourId)
+      .then(r => { if (alive) setOwned(!!r?.owned); })
+      .catch(() => { /* ignoriši */ });
+
+    // 2) da li je već u korpi (da radi i posle refresh-a)
+    PurchaseAPI.getCart()
+      .then(c => {
+        if (!alive) return;
+        const items = Array.isArray(c?.items) ? c.items : [];
+        setInCart(items.some(i => i.tourId === tourId));
+      })
+      .catch(() => { /* ignoriši */ });
+
+    return () => { alive = false; };
+  }, [tourId]);
+
+  const add = async () => {
+    try {
+      setBusy(true);
+      await PurchaseAPI.addItem(tourId);
+      setInCart(true);
+    } catch (e) {
+      const msg = (e?.message || "").toLowerCase();
+      if (msg.includes("already")) setInCart(true);
+      else alert(e.message || "Greška");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Ako je već kupljeno – prikaži badge umesto dugmeta
+  if (owned) {
+    return (
+      <span
+        className="t-pill"
+        style={{
+          padding: "4px 10px",
+          borderRadius: 999,
+          background: "#dcfce7",
+          color: "#065f46",
+          fontSize: 12,
+          fontWeight: 700
+        }}
+        title="Već poseduješ ovu turu"
+      >
+        Kupljeno
+      </span>
+    );
+  }
+
+  if (inCart) {
+    return (
+      <span
+        className="t-pill"
+        style={{
+          padding: "4px 10px",
+          borderRadius: 999,
+          background: "#e0f2fe",
+          color: "#075985",
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        Tura je u korpi
+      </span>
+    );
+  }
+
+  return (
+    <button className="t-btn" disabled={busy} onClick={add}>
+      {busy ? "Dodajem…" : "Dodaj u korpu"}
+    </button>
+  );
 }
 
 export default function TourListForTourists() {
@@ -135,8 +340,7 @@ export default function TourListForTourists() {
     async function loadTours() {
       try {
         setLoading(true);
-        // NOVO: uzimamo samo objavljene ture + prva ključna tačka iz backend-a
-        const data = await ToursAPI.listPublic();
+        const data = await ToursAPI.listPublic(); // PUBLISHED + prva ključna tačka
         setTours(Array.isArray(data) ? data : []);
       } catch (e) {
         setErr(e.message || "Failed to load tours.");
@@ -163,8 +367,6 @@ export default function TourListForTourists() {
     );
   }
 
-  // Public endpoint već vraća samo PUBLISHED ture,
-  // ali zadržavamo "publishedTours" varijablu da minimalno diramo ostatak koda.
   const publishedTours = tours;
 
   return (
@@ -175,7 +377,6 @@ export default function TourListForTourists() {
       ) : (
         <div className="t-grid-cards">
           {publishedTours.map((tour) => {
-            // Prva ključna tačka sada stiže direktno u odgovoru
             const firstPoint = tour.firstKeyPointName
               ? {
                   name: tour.firstKeyPointName,
@@ -199,9 +400,14 @@ export default function TourListForTourists() {
                   <div
                     className="t-card-cover"
                     style={{
-                      width: "100%", height: 160, background: "#f3f4f6",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      color: "#6b7280", fontSize: 14
+                      width: "100%",
+                      height: 160,
+                      background: "#f3f4f6",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#6b7280",
+                      fontSize: 14,
                     }}
                   >
                     No image
@@ -209,8 +415,10 @@ export default function TourListForTourists() {
                 )}
 
                 <header className="t-card-head">
-                  <h2 className="t-card-title">{tour.name}</h2>
-                  {/* status je uvek PUBLISHED, ali ostavimo badge radi konzistentnosti UI-a */}
+                  <h2 className="t-card-title">
+                    {/* NEMA više OwnedBadge ovde */}
+                    {tour.name}
+                  </h2>
                   <span className="t-badge">PUBLISHED</span>
                 </header>
 
@@ -232,19 +440,37 @@ export default function TourListForTourists() {
                     <strong>Start: </strong>
                     {firstPoint.name}
                     {firstPoint.lat != null && firstPoint.lng != null && (
-                      <> ({Number(firstPoint.lat).toFixed(4)}, {Number(firstPoint.lng).toFixed(4)})</>
+                      <>
+                        {" "}
+                        ({Number(firstPoint.lat).toFixed(4)},{" "}
+                        {Number(firstPoint.lng).toFixed(4)})
+                      </>
                     )}
                   </div>
                 )}
 
                 {/* Durations (WALK/BIKE/CAR) */}
                 {tour.durations && Object.keys(tour.durations).length > 0 && (
-                  <div className="t-durations" style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <div
+                    className="t-durations"
+                    style={{
+                      marginTop: 8,
+                      display: "flex",
+                      gap: 8,
+                      flexWrap: "wrap",
+                    }}
+                  >
                     {Object.entries(tour.durations).map(([k, v]) => (
                       <span
                         key={k}
                         className="t-pill"
-                        style={{ padding: "2px 8px", borderRadius: 999, background: "#eef2ff", color: "#111827", fontSize: 12 }}
+                        style={{
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          background: "#eef2ff",
+                          color: "#111827",
+                          fontSize: 12,
+                        }}
                       >
                         {k}: {v} min
                       </span>
@@ -252,23 +478,15 @@ export default function TourListForTourists() {
                   </div>
                 )}
 
-                {/* CTA */}
-                {/* <div className="t-actions" style={{ marginTop: 10, display: "flex", gap: 8 }}>
-                  <Link className="t-btn" to={`/tours/${tour.id}`}>
-                    Details
-                  </Link>
-                </div> */}
+                {/* Dugme/badge (ako kupljeno → "Kupljeno") */}
+                <div className="t-actions" style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                  <AddToCartBtn tourId={tour.id} />
+                </div>
 
-                {/* Forma za dodavanje recenzije — ostavljamo postojeće ponašanje */}
+                {/* Recenzije */}
                 <div className="add-review" style={{ marginTop: 14 }}>
                   <h3>Add Review</h3>
-                  <AddTourReview
-                    tourId={tour.id}
-                    onReviewAdded={(review) => {
-                      // Po potrebi ovde osvežiš prikaz recenzija/listu
-                      // (Public API ne vraća recenzije; ovo je hook za tvoj postojeći flow)
-                    }}
-                  />
+                  <AddTourReview tourId={tour.id} onReviewAdded={() => {}} />
                 </div>
               </article>
             );
@@ -278,4 +496,3 @@ export default function TourListForTourists() {
     </div>
   );
 }
-

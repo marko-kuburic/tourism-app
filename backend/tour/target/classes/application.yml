@@ -27,10 +27,16 @@ app:
   jwt:
     secret: ${JWT_SECRET:JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0=} 
 
+
+purchase:
+  base-url: ${PURCHASE_BASE_URL:http://purchase:8085}
+
+
 grpc:                     
   server:
     port: 9094 
     reflectionServiceEnabled: true
+    
 logging:
   level:
     org.hibernate.SQL: debug
