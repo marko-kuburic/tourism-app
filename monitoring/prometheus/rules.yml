@@ -1,0 +1,210 @@
+groups:
+  - name: containers_labels
+    interval: 15s
+    rules:
+      # --- CPU ---
+      - record: container_cpu_usage_seconds_total_labeled
+        expr: |
+          sum by (container) (
+            label_replace(rate(container_cpu_usage_seconds_total{job="cadvisor"}[1m]),
+              "container", "gateway", "id", ".*/38b515b0b92a.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_cpu_usage_seconds_total{job="cadvisor"}[1m]),
+              "container", "frontend", "id", ".*/ffbe42e84d6f.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_cpu_usage_seconds_total{job="cadvisor"}[1m]),
+              "container", "purchase", "id", ".*/1c7746d90f0d.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_cpu_usage_seconds_total{job="cadvisor"}[1m]),
+              "container", "following", "id", ".*/2f3f71eb5054.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_cpu_usage_seconds_total{job="cadvisor"}[1m]),
+              "container", "tour", "id", ".*/48abc7c242a0.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_cpu_usage_seconds_total{job="cadvisor"}[1m]),
+              "container", "backend", "id", ".*/3960d436e952.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_cpu_usage_seconds_total{job="cadvisor"}[1m]),
+              "container", "blog", "id", ".*/a29814819db8.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_cpu_usage_seconds_total{job="cadvisor"}[1m]),
+              "container", "tour-mysql", "id", ".*/d47c511d34c7.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_cpu_usage_seconds_total{job="cadvisor"}[1m]),
+              "container", "purchase-mysql", "id", ".*/ed082fb1579c.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_cpu_usage_seconds_total{job="cadvisor"}[1m]),
+              "container", "neo4j", "id", ".*/31938da91481.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_cpu_usage_seconds_total{job="cadvisor"}[1m]),
+              "container", "mysql", "id", ".*/bb9b9c19932f.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_cpu_usage_seconds_total{job="cadvisor"}[1m]),
+              "container", "mongodb", "id", ".*/f464b76572cc.*")
+          )
+
+      # --- Memory ---
+      - record: container_memory_usage_bytes_labeled
+        expr: |
+          sum by (container) (
+            label_replace(container_memory_usage_bytes{job="cadvisor"},
+              "container", "gateway", "id", ".*/38b515b0b92a.*")
+          )
+          or sum by (container) (
+            label_replace(container_memory_usage_bytes{job="cadvisor"},
+              "container", "frontend", "id", ".*/ffbe42e84d6f.*")
+          )
+          or sum by (container) (
+            label_replace(container_memory_usage_bytes{job="cadvisor"},
+              "container", "purchase", "id", ".*/1c7746d90f0d.*")
+          )
+          or sum by (container) (
+            label_replace(container_memory_usage_bytes{job="cadvisor"},
+              "container", "following", "id", ".*/2f3f71eb5054.*")
+          )
+          or sum by (container) (
+            label_replace(container_memory_usage_bytes{job="cadvisor"},
+              "container", "tour", "id", ".*/48abc7c242a0.*")
+          )
+          or sum by (container) (
+            label_replace(container_memory_usage_bytes{job="cadvisor"},
+              "container", "backend", "id", ".*/3960d436e952.*")
+          )
+          or sum by (container) (
+            label_replace(container_memory_usage_bytes{job="cadvisor"},
+              "container", "blog", "id", ".*/a29814819db8.*")
+          )
+          or sum by (container) (
+            label_replace(container_memory_usage_bytes{job="cadvisor"},
+              "container", "tour-mysql", "id", ".*/d47c511d34c7.*")
+          )
+          or sum by (container) (
+            label_replace(container_memory_usage_bytes{job="cadvisor"},
+              "container", "purchase-mysql", "id", ".*/ed082fb1579c.*")
+          )
+          or sum by (container) (
+            label_replace(container_memory_usage_bytes{job="cadvisor"},
+              "container", "neo4j", "id", ".*/31938da91481.*")
+          )
+          or sum by (container) (
+            label_replace(container_memory_usage_bytes{job="cadvisor"},
+              "container", "mysql", "id", ".*/bb9b9c19932f.*")
+          )
+          or sum by (container) (
+            label_replace(container_memory_usage_bytes{job="cadvisor"},
+              "container", "mongodb", "id", ".*/f464b76572cc.*")
+          )
+
+      # --- Network RX/TX ---
+      - record: container_network_receive_bytes_total_labeled
+        expr: |
+          sum by (container) (
+            label_replace(rate(container_network_receive_bytes_total{job="cadvisor"}[1m]),
+              "container", "gateway", "id", ".*/38b515b0b92a.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_receive_bytes_total{job="cadvisor"}[1m]),
+              "container", "frontend", "id", ".*/ffbe42e84d6f.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_receive_bytes_total{job="cadvisor"}[1m]),
+              "container", "purchase", "id", ".*/1c7746d90f0d.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_receive_bytes_total{job="cadvisor"}[1m]),
+              "container", "following", "id", ".*/2f3f71eb5054.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_receive_bytes_total{job="cadvisor"}[1m]),
+              "container", "tour", "id", ".*/48abc7c242a0.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_receive_bytes_total{job="cadvisor"}[1m]),
+              "container", "backend", "id", ".*/3960d436e952.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_receive_bytes_total{job="cadvisor"}[1m]),
+              "container", "blog", "id", ".*/a29814819db8.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_receive_bytes_total{job="cadvisor"}[1m]),
+              "container", "tour-mysql", "id", ".*/d47c511d34c7.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_receive_bytes_total{job="cadvisor"}[1m]),
+              "container", "purchase-mysql", "id", ".*/ed082fb1579c.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_receive_bytes_total{job="cadvisor"}[1m]),
+              "container", "neo4j", "id", ".*/31938da91481.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_receive_bytes_total{job="cadvisor"}[1m]),
+              "container", "mysql", "id", ".*/bb9b9c19932f.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_receive_bytes_total{job="cadvisor"}[1m]),
+              "container", "mongodb", "id", ".*/f464b76572cc.*")
+          )
+
+      - record: container_network_transmit_bytes_total_labeled
+        expr: |
+          sum by (container) (
+            label_replace(rate(container_network_transmit_bytes_total{job="cadvisor"}[1m]),
+              "container", "gateway", "id", ".*/38b515b0b92a.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_transmit_bytes_total{job="cadvisor"}[1m]),
+              "container", "frontend", "id", ".*/ffbe42e84d6f.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_transmit_bytes_total{job="cadvisor"}[1m]),
+              "container", "purchase", "id", ".*/1c7746d90f0d.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_transmit_bytes_total{job="cadvisor"}[1m]),
+              "container", "following", "id", ".*/2f3f71eb5054.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_transmit_bytes_total{job="cadvisor"}[1m]),
+              "container", "tour", "id", ".*/48abc7c242a0.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_transmit_bytes_total{job="cadvisor"}[1m]),
+              "container", "backend", "id", ".*/3960d436e952.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_transmit_bytes_total{job="cadvisor"}[1m]),
+              "container", "blog", "id", ".*/a29814819db8.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_transmit_bytes_total{job="cadvisor"}[1m]),
+              "container", "tour-mysql", "id", ".*/d47c511d34c7.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_transmit_bytes_total{job="cadvisor"}[1m]),
+              "container", "purchase-mysql", "id", ".*/ed082fb1579c.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_transmit_bytes_total{job="cadvisor"}[1m]),
+              "container", "neo4j", "id", ".*/31938da91481.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_transmit_bytes_total{job="cadvisor"}[1m]),
+              "container", "mysql", "id", ".*/bb9b9c19932f.*")
+          )
+          or sum by (container) (
+            label_replace(rate(container_network_transmit_bytes_total{job="cadvisor"}[1m]),
+              "container", "mongodb", "id", ".*/f464b76572cc.*")
+          )
