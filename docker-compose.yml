@@ -11,6 +11,7 @@ services:
       PORT: 8080
       PURCHASE_URL: http://purchase:8085 
       TOUR_GRPC_ADDR: tour:9094
+      STAKEHOLDER_GRPC_ADDR: backend:9095
       PROTO_DIR: /proto
     depends_on:
       - backend
@@ -28,10 +29,11 @@ services:
 
   backend:
     build:
-      context: ./backend/stakeholders
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/stakeholders/Dockerfile
     ports:
       - "8081:8081"
+      - "9095:9095"
     depends_on:
       mysql:
         condition: service_healthy
