@@ -163,8 +163,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      VITE_AUTH_API_URL: http://localhost:8080/stakeholders
-      VITE_API_BASE_URL: http://localhost:8080
+      VITE_AUTH_API_URL: http://localhost:8080/auth
+      VITE_API_BASE_URL: http://localhost:8081
       VITE_FOLLOWING_API_URL: http://localhost:8083
       VITE_BLOG_API_URL: http://localhost:8082
       VITE_TOURS_API_URL: http://localhost:8080/tour

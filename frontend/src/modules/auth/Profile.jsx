@@ -7,7 +7,7 @@ const apiBaseUrl = (import.meta && import.meta.env && import.meta.env.VITE_API_B
 function getImageUrl(imagePath) {
   if (!imagePath) return null
   if (imagePath.startsWith('http')) return imagePath // Already a full URL
-  if (imagePath.startsWith('/uploads/')) return `${apiBaseUrl}/api/stakeholders${imagePath}` // Backend uploaded file through gateway
+  if (imagePath.startsWith('/uploads/')) return `${apiBaseUrl}${imagePath}` // Direct backend serving
   return imagePath // Fallback
 }  
 
