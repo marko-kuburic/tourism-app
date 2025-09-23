@@ -290,6 +290,8 @@ app.delete('/api-tours/tours/:id', (req, res) => {
 // …or any other future REST subpaths on the Spring app.
 app.use('/api-tours', (req, _res, next) => {
   console.log(`[GATEWAY] API-TOURS REST PASS ${req.method} ${req.originalUrl}`);
+  console.log(`[GATEWAY] API-TOURS Headers:`, req.headers);
+  console.log(`[GATEWAY] API-TOURS Body:`, req.body);
   next();
 });
 
@@ -312,6 +314,20 @@ app.use(
     {
       target: 'http://tour:8084',
       pathRewrite: { '^/api-tours': '' },
+      changeOrigin: true,
+      onProxyReq: (proxyReq, req) => {
+        // Proslijedi Authorization header
+        const auth = req.headers['authorization'];
+        if (auth) proxyReq.setHeader('authorization', auth);
+        
+        // Za POST/PUT zahteve, proslijedi JSON body
+        if (req.body && (req.method === 'POST' || req.method === 'PUT')) {
+          const bodyData = JSON.stringify(req.body);
+          proxyReq.setHeader('Content-Type', 'application/json');
+          proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+          proxyReq.write(bodyData);
+        }
+      },
       ...commonProxyOpts,
     },
   ),
@@ -335,18 +351,15 @@ app.listen(PORT, () => {
 
 app.use('/purchase', (req, res, next) => {
   console.log(`[GATEWAY] PURCHASE REQUEST: ${req.method} ${req.originalUrl}`);
+  console.log(`[GATEWAY] PURCHASE Headers:`, req.headers);
+  console.log(`[GATEWAY] PURCHASE Body:`, req.body);
   next();
 });
 app.use(
   '/purchase',
-  createProxyMiddleware({
+  jsonForwardingProxy({
     target: PURCHASE_URL,
-    changeOrigin: true,
-    pathRewrite: { '^/purchase': '' },
-    onProxyReq: (proxyReq, req) => {
-      const auth = req.headers['authorization'];
-      if (auth) proxyReq.setHeader('authorization', auth);
-    },
+    rewritePrefix: '^/purchase',
   })
 );
 console.log('[GATEWAY] purchase target =', PURCHASE_URL);
