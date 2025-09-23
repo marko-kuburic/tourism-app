@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";  
-import { getProfile, normalizeRole } from "./api";  
+import { getProfile } from "./api";  
+import { normalizeRole } from "./roleUtils";
 import TourListForTourist from "../tours/TourListForTourist";  // Importiraj komponentu za turiste
 import Login from './Login.jsx'
 import Register from './Register.jsx'

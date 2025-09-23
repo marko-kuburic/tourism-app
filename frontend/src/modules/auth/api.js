@@ -68,10 +68,19 @@ export function normalizeRole(profile) {
 
 
 export async function updateProfile(payload) {
+  // Filter out empty strings and only send fields that have values
+  const filteredPayload = {};
+  Object.keys(payload).forEach(key => {
+    const value = payload[key];
+    if (value !== null && value !== undefined && value !== '') {
+      filteredPayload[key] = value;
+    }
+  });
+  
   const res = await fetch(`${STAKE}/me`, {
     method: 'PUT',
     headers: jsonHeaders(),
-    body: JSON.stringify(payload),
+    body: JSON.stringify(filteredPayload),
   });
   return handle(res, 'Failed to update profile');
 }
@@ -104,4 +113,16 @@ export async function followUser(userId) {
     headers: authHeader(),
   });
   return handle(res, 'Failed to follow user');
+}
+
+export async function uploadProfilePicture(file) {
+  const formData = new FormData();
+  formData.append('profile_picture', file);
+  
+  const res = await fetch(`${STAKE}/upload-profile-picture`, {
+    method: 'POST',
+    headers: authHeader(),
+    body: formData,
+  });
+  return handle(res, 'Failed to upload profile picture');
 }
