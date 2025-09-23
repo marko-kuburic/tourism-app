@@ -3,6 +3,7 @@ package observability
 import (
     "net/http"
     "strconv"
+    "sync"
     "time"
 
     "github.com/prometheus/client_golang/prometheus"
@@ -30,11 +31,29 @@ var (
     )
 )
 
+var stdRegOnce sync.Once
+
 func init() {
-    prometheus.MustRegister(httpRequestsTotal, httpRequestDuration)
-    // Standard runtime and process collectors for Go apps
-    prometheus.MustRegister(prometheus.NewGoCollector())
-    prometheus.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+    // Register app metrics, but if already registered, reuse existing collectors to avoid duplicate-registration panic.
+    if err := prometheus.Register(httpRequestsTotal); err != nil {
+        if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+            if cv, ok := are.ExistingCollector.(*prometheus.CounterVec); ok {
+                httpRequestsTotal = cv
+            }
+        }
+    }
+    if err := prometheus.Register(httpRequestDuration); err != nil {
+        if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+            if hv, ok := are.ExistingCollector.(*prometheus.HistogramVec); ok {
+                httpRequestDuration = hv
+            }
+        }
+    }
+    // Standard runtime and process collectors for Go apps (register exactly once)
+    stdRegOnce.Do(func() {
+        _ = prometheus.Register(prometheus.NewGoCollector())
+        _ = prometheus.Register(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+    })
 }
 
 // MetricsHandler serves Prometheus metrics.
