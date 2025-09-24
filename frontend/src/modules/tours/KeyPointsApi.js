@@ -1,7 +1,6 @@
 // src/modules/tours/KeyPointsApi.js
-const API_BASE = import.meta.env.VITE_TOURS_BASE
-  || import.meta.env.VITE_TOURS_API_URL
-  || '/api-tours';
+const ROOT = (import.meta?.env?.VITE_API_BASE_URL) || 'http://localhost:8080';
+const API_BASE = `${ROOT}/api-tours`;
 //VITE_POSITION_URL='http://localhost:8084/api/simulator/position'
 
 //const POSITION_URL = import.meta.env.VITE_POSITION_URL || '/api/simulator/position';
