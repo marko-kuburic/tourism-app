@@ -62,3 +62,83 @@ export default function AddTourReview({ tourId, onReviewAdded }) {
     </div>
   );
 }
+
+// import React, { useState } from "react";
+// import { ToursAPI } from "./ToursApi";
+
+// export default function AddTourReview({ tourId, onReviewAdded }) {
+//   const [rating, setRating] = useState(5);
+//   const [comment, setComment] = useState("");
+//   const [submitting, setSubmitting] = useState(false);
+//   const [error, setError] = useState("");
+
+//   async function onSubmit(e) {
+//     e.preventDefault();
+//     setError("");
+
+//     const r = Number(rating);
+//     if (!Number.isFinite(r) || r < 1 || r > 5) {
+//       setError("Ocena mora biti 1–5.");
+//       return;
+//     }
+
+//     try {
+//       setSubmitting(true);
+//       const created = await ToursAPI.addReview(tourId, { rating: r, comment });
+//       onReviewAdded?.(created);
+//       setRating(5);
+//       setComment("");
+//     } catch (e) {
+//       setError(e.message || "Greška pri dodavanju recenzije");
+//     } finally {
+//       setSubmitting(false);
+//     }
+//   }
+
+//   return (
+//     <form onSubmit={onSubmit} className="t-card" style={{ padding: 10 }}>
+//       <h4 className="t-card-title">Dodaj recenziju</h4>
+//       {error && <div className="t-error" style={{ marginTop: 4 }}>{error}</div>}
+//       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+//         <label>
+//           Ocena:&nbsp;
+//           <input
+//             type="number"
+//             min={1}
+//             max={5}
+//             value={rating}
+//             onChange={(e) => setRating(e.target.value)}
+//             style={{ width: 64 }}
+//           />
+//         </label>
+//       </div>
+//       <div style={{ marginTop: 8 }}>
+//         <textarea
+//           value={comment}
+//           onChange={(e) => setComment(e.target.value)}
+//           placeholder="Upiši komentar..."
+//           rows={3}
+//           style={{
+//             width: "100%",
+//             maxWidth: 420,
+//             marginTop: 4,
+//             background: "#222",
+//             color: "#fff",
+//             border: "1px solid #333",
+//             padding: 8,
+//             borderRadius: 8
+//           }}
+//         />
+//       </div>
+//       <button
+//         type="submit"
+//         disabled={submitting}
+//         className="t-btn"
+//         style={{ marginTop: 8 }}
+//       >
+//         {submitting ? "Slanje..." : "Pošalji recenziju"}
+//       </button>
+//     </form>
+//   );
+// }
+
