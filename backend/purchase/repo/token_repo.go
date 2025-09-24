@@ -31,3 +31,7 @@ func (r *TokenRepo) ListForUser(userID string) ([]model.PurchaseToken, error) {
 	err := r.DB.Where("user_id=?", userID).Find(&toks).Error
 	return toks, err
 }
+
+func (r *TokenRepo) CreateWithTx(tx *gorm.DB, t *model.PurchaseToken) error {
+	return tx.Create(t).Error
+}
