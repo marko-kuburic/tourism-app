@@ -117,11 +117,7 @@ export default function Profile() {
               Set location
             </Link>
           )}
-          {!isEditing ? (
-            <button className="button" onClick={handleEdit}>
-              Edit Profile
-            </button>
-          ) : (
+          {isEditing && (
             <>
               <button 
                 className="button" 
@@ -257,8 +253,14 @@ export default function Profile() {
           maxLength={255}
         />
       </div>
-      
-      <button className="button" onClick={handleLogout}>Logout</button>
+
+      {!isEditing && (
+        <div style={{ marginTop: '24px' }}>
+          <button className="button" onClick={handleEdit}>
+            Edit Profile
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -23,6 +23,7 @@ func main() {
 	colName := getenv("MONGO_COLLECTION", "blogs")
 	_ = mustGet("JWT_SECRET") // required, used by handler.withAuth()
 
+
 	// --- Mongo client ---
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri))
 	if err != nil {

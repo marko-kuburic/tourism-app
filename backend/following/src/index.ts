@@ -104,84 +104,103 @@ app.delete('/follow/:followeeId', async (req, res) => {
   }
 })
 
-// Recommendations: friends-of-friends you don't already follow
+// Recommendations: friends-of-friends you don't already follow, then all others by follower count
 app.get('/recommendations', async (req, res) => {
   try {
     const userId = await getUserIdFromRequest(req)
     if (!userId) return res.status(401).json({ error: 'Unauthorized' })
     const session = driver.session()
     try {
-      const primary = await session.executeRead(tx => tx.run(
+      // Step 1: Get friends-of-friends (users followed by people you follow)
+      const friendsOfFriendsResult = await session.executeRead(tx => tx.run(
         `MATCH (me:User {id: $userId})-[:FOLLOWS]->(:User)-[:FOLLOWS]->(s:User)
          WHERE s.id <> $userId AND NOT (me)-[:FOLLOWS]->(s)
          OPTIONAL MATCH (s)<-[:FOLLOWS]-(f1:User)
-         WITH me, s, count(distinct f1) AS followers, count(*) AS score
+         WITH s, count(distinct f1) AS followers
          OPTIONAL MATCH (s)-[:FOLLOWS]->(f2:User)
-         WITH s, followers, score, count(distinct f2) AS following
-         RETURN s.id AS id, followers, following, score
-         ORDER BY score DESC LIMIT 20`,
+         WITH s, followers, count(distinct f2) AS following
+         RETURN s.id AS id, followers, following
+         ORDER BY followers DESC`,
         { userId }
       ))
-      const recs = primary.records.map(r => ({
+
+      // Step 2: Get all users you're NOT following (excluding already found friends-of-friends)
+      const followedResult = await session.executeRead(tx => tx.run(
+        `MATCH (me:User {id: $userId})-[:FOLLOWS]->(u:User) RETURN u.id AS id`,
+        { userId }
+      ))
+      const alreadyFollowed = new Set<string>(followedResult.records.map(r => r.get('id') as string))
+      const friendsOfFriends = new Set<string>(friendsOfFriendsResult.records.map(r => r.get('id') as string))
+
+      // Get all users from stakeholders service
+      const usersResponse = await fetch(`${STAKEHOLDERS_API_URL}/users/public`)
+      let allOtherUsers: any[] = []
+      if (usersResponse.ok) {
+        const allUsers: any[] = await usersResponse.json()
+        const otherUserIds = allUsers
+          .filter(u => u.role !== 'admin') // Exclude admins
+          .filter(u => u.id !== userId) // Exclude self
+          .filter(u => !alreadyFollowed.has(u.id)) // Exclude already followed
+          .filter(u => !friendsOfFriends.has(u.id)) // Exclude friends-of-friends (they go first)
+          .map(u => u.id)
+
+        if (otherUserIds.length > 0) {
+          const otherUsersResult = await session.executeRead(tx => tx.run(
+            `UNWIND $ids AS uid
+             OPTIONAL MATCH (u:User {id: uid})
+             OPTIONAL MATCH (u)<-[:FOLLOWS]-(f:User)
+             WITH uid, count(distinct f) AS followers
+             OPTIONAL MATCH (u2:User {id: uid})-[:FOLLOWS]->(x:User)
+             RETURN uid AS id, followers, count(distinct x) AS following
+             ORDER BY followers DESC`,
+            { ids: otherUserIds }
+          ))
+          allOtherUsers = otherUsersResult.records.map(r => ({
+            id: r.get('id') as string,
+            followers: Number(r.get('followers')?.toInt ? r.get('followers').toInt() : r.get('followers')),
+            following: Number(r.get('following')?.toInt ? r.get('following').toInt() : r.get('following')),
+          }))
+        }
+      }
+
+      // Process and sort each section separately
+      const friendsOfFriendsData = friendsOfFriendsResult.records.map(r => ({
         id: r.get('id') as string,
         followers: Number(r.get('followers')?.toInt ? r.get('followers').toInt() : r.get('followers')),
         following: Number(r.get('following')?.toInt ? r.get('following').toInt() : r.get('following')),
-        score: Number(r.get('score')?.toInt ? r.get('score').toInt() : r.get('score')),
-      }))
-      // Enrich with username/role and filter out admins
+        section: 'friends-of-friends' // Section identifier for frontend
+      })).sort((a, b) => b.followers - a.followers) // Sort friends-of-friends by followers desc
+
+      const popularUsersData = allOtherUsers.map(u => ({ ...u, section: 'popular' }))
+        .sort((a, b) => b.followers - a.followers) // Sort popular users by followers desc
+
+      // Combine: friends-of-friends section first, then popular users section
+      const combinedRecommendations = [
+        ...friendsOfFriendsData.slice(0, 10), // Limit friends-of-friends to 10
+        ...popularUsersData.slice(0, 10)      // Limit popular users to 10
+      ]
+
+      // Enrich with user details from stakeholders service
       let enriched: any[] = []
-      for (const r of recs) {
+      for (const rec of combinedRecommendations) {
         try {
-          const ures = await fetch(`${STAKEHOLDERS_API_URL}/users/${r.id}`)
-          if (!ures.ok) continue
-          const u: any = await ures.json()
-          if (u.role === 'admin') continue
-          enriched.push({ id: r.id, username: u.username, followers: r.followers, following: r.following, score: r.score })
-        } catch {}
+          const userResponse = await fetch(`${STAKEHOLDERS_API_URL}/users/${rec.id}`)
+          if (!userResponse.ok) continue
+          const user: any = await userResponse.json()
+          if (user.role === 'admin') continue // Double-check admin exclusion
+          enriched.push({
+            id: rec.id,
+            username: user.username,
+            role: user.role,
+            followers: rec.followers,
+            following: rec.following,
+            section: rec.section // Include section for frontend categorization
+          })
+        } catch (error) {
+          console.error(`Failed to fetch user details for ${rec.id}:`, error)
+        }
       }
-      if (enriched.length === 0) {
-        // Fallback: popular non-admin users you don't already follow
-        try {
-          // Get set of already-followed ids
-          const followedRes = await session.executeRead(tx => tx.run(
-            `MATCH (me:User {id: $userId})-[:FOLLOWS]->(u:User) RETURN u.id AS id`,
-            { userId }
-          ))
-          const already = new Set<string>(followedRes.records.map(r => r.get('id') as string))
 
-          const ures = await fetch(`${STAKEHOLDERS_API_URL}/users/public`)
-          if (ures.ok) {
-            const list: any[] = await ures.json()
-            const ids = list.map(u => u.id).filter((id: string) => id !== userId && !already.has(id))
-
-            // Compute followers/following counts where present in graph
-            const result = await session.executeRead(tx => tx.run(
-              `UNWIND $ids AS uid
-               OPTIONAL MATCH (u:User {id: uid})
-               OPTIONAL MATCH (u)<-[:FOLLOWS]-(f:User)
-               WITH uid, count(distinct f) AS followers
-               OPTIONAL MATCH (u2:User {id: uid})-[:FOLLOWS]->(x:User)
-               RETURN uid AS id, followers, count(distinct x) AS following
-               ORDER BY followers DESC LIMIT 20`,
-              { ids }
-            ))
-            const mapCounts = new Map<string,{followers:number,following:number}>()
-            for (const r of result.records) {
-              const id = r.get('id') as string
-              const followers = Number(r.get('followers')?.toInt ? r.get('followers').toInt() : r.get('followers'))
-              const following = Number(r.get('following')?.toInt ? r.get('following').toInt() : r.get('following'))
-              mapCounts.set(id, { followers, following })
-            }
-
-            enriched = list
-              .filter(u => u.role !== 'admin')
-              .filter(u => u.id !== userId && !already.has(u.id))
-              .map(u => ({ id: u.id, username: u.username, followers: mapCounts.get(u.id)?.followers ?? 0, following: mapCounts.get(u.id)?.following ?? 0, score: mapCounts.get(u.id)?.followers ?? 0 }))
-              .sort((a,b) => b.followers - a.followers)
-              .slice(0, 20)
-          }
-        } catch {}
-      }
       res.json(enriched)
     } finally {
       await session.close()

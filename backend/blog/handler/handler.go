@@ -28,25 +28,26 @@ func (h *BlogHandler) RegisterRoutes(r *mux.Router) {
 	// --- Preflight (OPTIONS) ---
 	r.HandleFunc("/blogs", h.options).Methods(http.MethodOptions)
 	r.HandleFunc("/blogs/feed", h.options).Methods(http.MethodOptions)
+	r.HandleFunc("/blogs/upload-image", h.options).Methods(http.MethodOptions)
 	r.HandleFunc("/blogs/{id}", h.options).Methods(http.MethodOptions)
 	r.HandleFunc("/blogs/{id}/comments", h.options).Methods(http.MethodOptions)
 	r.HandleFunc("/blogs/{id}/comments/{cid}", h.options).Methods(http.MethodOptions)
 	r.HandleFunc("/blogs/{id}/like", h.options).Methods(http.MethodOptions)
-	r.HandleFunc("/blogs/upload-image", h.options).Methods(http.MethodOptions)
 
-	// --- Public reads ---
+	// --- Public reads (non-parameterized first) ---
 	r.HandleFunc("/blogs", h.list).Methods(http.MethodGet)
-	r.HandleFunc("/blogs/{id}", h.get).Methods(http.MethodGet)
-	r.HandleFunc("/blogs/{id}/comments", h.listComments).Methods(http.MethodGet)
 
-	// --- Protected (JWT) ---
+	// --- Protected (non-parameterized) ---
 	r.HandleFunc("/blogs", h.withAuth(h.create)).Methods(http.MethodPost)
 	r.HandleFunc("/blogs/feed", h.withAuth(h.feed)).Methods(http.MethodGet)
-
 	// file upload (multipart/form-data; field name: "image")
 	r.HandleFunc("/blogs/upload-image", h.withAuth(h.uploadImage)).Methods(http.MethodPost)
 
-	// comments & likes (write)
+	// --- Public parameterized reads ---
+	r.HandleFunc("/blogs/{id}", h.get).Methods(http.MethodGet)
+	r.HandleFunc("/blogs/{id}/comments", h.listComments).Methods(http.MethodGet)
+
+	// --- Protected (parameterized writes) ---
 	r.HandleFunc("/blogs/{id}/comments", h.withAuth(h.addComment)).Methods(http.MethodPost)
 	r.HandleFunc("/blogs/{id}/comments/{cid}", h.withAuth(h.updateComment)).Methods(http.MethodPatch)
 	r.HandleFunc("/blogs/{id}/comments/{cid}", h.withAuth(h.deleteComment)).Methods(http.MethodDelete)
