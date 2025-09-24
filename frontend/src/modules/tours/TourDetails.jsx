@@ -1,4 +1,3 @@
-
 // src/modules/tours/TourDetails.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -40,6 +39,52 @@ function parseStyle(inline) {
   }, {});
 }
 
+function toDate(value) {
+  if (value == null) return null;
+
+  // 1) Array from Jackson: [yyyy, M, d, H, m, s, nanos?]
+  if (Array.isArray(value)) {
+    const [y, m, d, H = 0, M = 0, S = 0, _nano = 0] = value;
+    // JS months are 0-based
+    const dt = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1, H, M, S));
+    return isNaN(+dt) ? null : dt;
+  }
+
+  // 2) Numeric epoch (seconds or ms) or numeric-like string
+  if (typeof value === "number" || /^\d+$/.test(String(value))) {
+    const n = Number(value);
+    const ms = n > 1e12 ? n : n * 1000; // treat 13-digit as ms, 10-digit as s
+    const dt = new Date(ms);
+    return isNaN(+dt) ? null : dt;
+  }
+
+  // 3) Strings
+  if (typeof value === "string") {
+    const s = value.trim();
+    if (!s) return null;
+
+    // "YYYY-MM-DD HH:mm:ss" → assume UTC (append Z)
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s)) {
+      const iso = s.replace(" ", "T") + "Z";
+      const dt = new Date(iso);
+      return isNaN(+dt) ? null : dt;
+    }
+
+    // ISO-like: "YYYY-MM-DDTHH:mm:ss[.SSS][Z|±hh:mm]"
+    const dt = new Date(s);
+    return isNaN(+dt) ? null : dt;
+  }
+
+  return null;
+}
+
+function fmtDate(value) {
+  const d = toDate(value);
+  return d ? d.toLocaleString() : "";
+}
+
+/* ----------------------------------------------- */
+
 export default function TourDetails() {
   const { id } = useParams();
   const [tour, setTour] = useState(null);
@@ -64,7 +109,6 @@ export default function TourDetails() {
 
   const canEdit = useMemo(() => {
     if (!profile || !tour) return false;
-    // prilagodi polje autora ako kod tebe nije authorId
     return (profile.role === "guide" || profile.role === "admin") &&
            String(tour.authorId) === String(profile.id);
   }, [profile, tour]);
@@ -134,7 +178,6 @@ export default function TourDetails() {
         const updated = await KeyPointsAPI.update(id, editingId, body);
         setPoints(prev => prev.map(p => p.id === editingId ? updated : p));
       }
-      // posle izmene tačaka, osveži turu (lengthKm se recalculiše na backend-u)
       await refetchTour();
       resetForm();
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -148,7 +191,7 @@ export default function TourDetails() {
     try {
       await KeyPointsAPI.remove(id, kpId);
       setPoints(prev => prev.filter(p => p.id !== kpId));
-      await refetchTour(); // da povučemo novi lengthKm
+      await refetchTour();
     } catch (e) {
       alert(e.message);
     }
@@ -163,7 +206,7 @@ export default function TourDetails() {
       lat: p.lat,
       lng: p.lng,
     });
-    setPicked(null); // dok ne klikneš ponovo na mapi
+    setPicked(null);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
 
@@ -175,7 +218,7 @@ export default function TourDetails() {
     }
     try {
       const base = import.meta.env.VITE_ROUTER_BASE || "https://router.project-osrm.org";
-      const coords = pts.map(p => `${p.lng},${p.lat}`).join(";"); // OSRM očekuje lng,lat
+      const coords = pts.map(p => `${p.lng},${p.lat}`).join(";"); // lng,lat
       const url = `${base}/route/v1/${profile}/${coords}?overview=full&geometries=geojson`;
       const res = await fetch(url);
       const data = await res.json();
@@ -187,21 +230,20 @@ export default function TourDetails() {
       }
     } catch (e) {
       console.warn("OSRM route fail:", e);
-      setRouteCoords(null); // fallback na ravne segmente
+      setRouteCoords(null); // fallback
     }
   }
 
   const sortedPoints = useMemo(() => {
     return [...points].sort((a,b) => {
       if (a.seq !== b.seq) return (a.seq ?? 0) - (b.seq ?? 0);
-      const ca = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const cb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const ca = toDate(a.createdAt ?? a.created_at)?.getTime() ?? 0;
+      const cb = toDate(b.createdAt ?? b.created_at)?.getTime() ?? 0;
       return ca - cb;
     });
   }, [points]);
 
   useEffect(() => {
-    // 'foot' | 'bicycle' | 'driving'
     computeStreetRoute(sortedPoints, "foot");
   }, [sortedPoints]);
 
@@ -289,8 +331,8 @@ export default function TourDetails() {
               </div>
             )}
             <div style={{ fontSize:12, color:"#666", marginTop:4 }}>
-              {tour.publishedAt && <>Objavljeno: {new Date(tour.publishedAt).toLocaleString()}{" · "}</>}
-              {tour.archivedAt && <>Arhivirano: {new Date(tour.archivedAt).toLocaleString()}</>}
+              { (tour.publishedAt ?? tour.published_at) && <>Objavljeno: {fmtDate(tour.publishedAt ?? tour.published_at)}{" · "}</> }
+              { (tour.archivedAt ?? tour.archived_at) && <>Arhivirano: {fmtDate(tour.archivedAt ?? tour.archived_at)}</> }
             </div>
           </div>
 
@@ -418,7 +460,6 @@ export default function TourDetails() {
             <Polyline positions={routeCoords} />
           ) : (
             polyPositions.length >= 2 && (
-              // fallback: ravna linija ako routing nije uspeo
               <Polyline positions={polyPositions} dashArray="6 8" />
             )
           )}
@@ -468,7 +509,6 @@ export default function TourDetails() {
             />
           </label>
 
-          {/* info o koordinatama tokom add/edit */}
           <div style={{ opacity: 0.75 }}>
             {editingId
               ? (picked
