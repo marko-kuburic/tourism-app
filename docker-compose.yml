@@ -117,6 +117,8 @@ services:
       JWT_SECRET: "JelfesyMS6HKEZerkegVucBD0GMcgJN0ZTzvuXxnG/0="
       FOLLOWING_API_URL: "http://following:8083"
 
+      UPLOAD_DIR: "/data/uploads"
+      UPLOADS_PUBLIC_PREFIX: "/uploads"
       # --- OpenTelemetry ---
       OTEL_SERVICE_NAME: blog
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
@@ -133,6 +135,7 @@ services:
       - "8082:8080"
     volumes:
       - ./monitoring/otel/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar:ro
+      - ./uploads:/data/uploads 
     restart: unless-stopped
     labels:
       - "compose.service=blog"

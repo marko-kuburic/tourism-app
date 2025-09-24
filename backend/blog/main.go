@@ -17,12 +17,14 @@ import (
 )
 
 func main() {
-	// Mongo config
+	// --- Mongo config ---
 	uri := getenv("MONGO_URI", "mongodb://mongodb:27017")
 	dbName := getenv("MONGO_DB", "tourism")
 	colName := getenv("MONGO_COLLECTION", "blogs")
+	_ = mustGet("JWT_SECRET") // required, used by handler.withAuth()
 
-	// Mongo client
+
+	// --- Mongo client ---
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri))
 	if err != nil {
 		log.Fatalf("mongo connect: %v", err)
@@ -41,19 +43,25 @@ func main() {
 	svc := service.New(r)
 	h := handler.New(svc)
 
-	// Router
+	// --- Router ---
 	rtr := mux.NewRouter().StrictSlash(true)
 	rtr.Use(cors)
 	rtr.Use(logging)
 
-	// public health (bez auth-a)
+	// public health
 	rtr.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	}).Methods(http.MethodGet)
 
-	// Register all routes (handler internally decides which need auth)
+	// Register ALL blog routes directly (public + protected).
+	// Protected routes are enforced by h.withAuth(...) inside the handler.
 	h.RegisterRoutes(rtr)
+
+	// --- Optional: serve /uploads/* directly from this service ---
+	uploadDir := getenv("UPLOAD_DIR", "./uploads")
+	fs := http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir)))
+	rtr.PathPrefix("/uploads/").Handler(fs).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
 
 	addr := ":8080"
 	log.Println("Blog (Mongo) service listening on", addr)
@@ -82,16 +90,14 @@ func mustGet(k string) string {
 	return v
 }
 
-
 func cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Dozvoli frontend na 3000 (po potrebi dodaj i 127.0.0.1:3000)
+		// Allow your FE origin(s) or move CORS to gateway
 		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 		w.Header().Set("Vary", "Origin")
 		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, PATCH, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 
-		// Preflight odmah završavamo
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return

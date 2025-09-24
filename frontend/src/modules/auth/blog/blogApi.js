@@ -145,3 +145,35 @@ export async function deleteComment(blogId, commentId) {
   }
   return true;
 }
+
+export async function uploadBlogImage(file) {
+  const fd = new FormData();
+  fd.append("image", file);
+
+  const res = await fetch(`${blogBaseUrl}/blogs/upload-image`, {
+    method: "POST",
+    headers: {
+      // IMPORTANT: don't set Content-Type; browser will set multipart boundary
+      ...(localStorage.getItem("auth_token") && {
+        Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+      }),
+    },
+    body: fd,
+  });
+
+  if (!res.ok) {
+    let err = {};
+    try { err = await res.json(); } catch {}
+    throw new Error(err.error || `Image upload failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function uploadBlogImages(files = []) {
+  const results = [];
+  for (const f of files) {
+    const r = await uploadBlogImage(f);
+    if (r?.file_path) results.push(r.file_path);
+  }
+  return results;
+}
