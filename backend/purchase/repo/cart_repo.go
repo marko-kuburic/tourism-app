@@ -52,3 +52,13 @@ func (r *CartRepo) MarkCheckedOut(cartID uuid.UUID) error {
 	return r.DB.Model(&model.ShoppingCart{}).Where("id=?", cartID).
 		Update("status", model.CartCheckedOut).Error
 }
+
+func (r *CartRepo) BeginTransaction() *gorm.DB {
+	return r.DB.Begin()
+}
+
+func (r *CartRepo) MarkCheckedOutTx(tx *gorm.DB, cartID uuid.UUID) error {
+	return tx.Model(&model.ShoppingCart{}).
+		Where("id = ?", cartID).
+		Update("status", model.CartCheckedOut).Error
+}
