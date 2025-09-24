@@ -50,7 +50,7 @@ export default function CreateTour() {
     if (!form.description.trim()) return setError("Description is required.");
     if (!form.difficulty) return setError("Difficulty is required.");
 
-    // Spec requires: initial price = 0, status = DRAFT
+    // Spec: initial price = 0, status = DRAFT
     const payload = {
       name: form.name.trim(),
       description: form.description.trim(),
@@ -63,7 +63,7 @@ export default function CreateTour() {
     try {
       setSubmitting(true);
       await ToursAPI.create(payload);
-      navigate("/tours"); // author can see their tours on the list page
+      navigate("/tours");
     } catch (err) {
       setError(err?.message || "Failed to create tour.");
     } finally {
@@ -121,9 +121,26 @@ export default function CreateTour() {
                 onChange={onChange}
                 placeholder="city, history, family"
               />
-              <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+
+              {/* tag adder row */}
+              <div
+                style={{
+                  marginTop: 8,
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                }}
+              >
                 <input
                   placeholder="Add single tag"
+                  style={{
+                    background: "#0b1020",
+                    color: "#e5e7eb",
+                    border: "1px solid #374151",
+                    borderRadius: 8,
+                    padding: "8px 10px",
+                    outline: "none",
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -146,29 +163,50 @@ export default function CreateTour() {
                   Add tag
                 </button>
               </div>
+
+              {/* visible, high-contrast chips */}
               {!!tags.length && (
-                <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
                   {tags.map((t, i) => (
                     <span
                       key={t + i}
                       className="t-chip"
                       style={{
-                        padding: "4px 8px",
-                        borderRadius: 999,
-                        background: "#eef",
-                        border: "1px solid #cdd",
                         display: "inline-flex",
-                        gap: 6,
                         alignItems: "center",
+                        gap: 6,
+                        padding: "6px 10px",
+                        borderRadius: 999,
+                        background: "#111827",   // dark slate
+                        color: "#e5e7eb",        // light text
+                        border: "1px solid #374151",
+                        boxShadow: "0 1px 0 rgba(0,0,0,.25)",
+                        fontSize: 12,
+                        lineHeight: 1,
                       }}
                     >
                       {t}
                       <button
                         type="button"
-                        className="t-btn-link"
                         onClick={() => removeTagAt(i)}
-                        title="Remove"
+                        title={`Remove ${t}`}
                         aria-label={`Remove ${t}`}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          color: "inherit",
+                          cursor: "pointer",
+                          opacity: 0.85,
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                        onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.85")}
                       >
                         ✕
                       </button>

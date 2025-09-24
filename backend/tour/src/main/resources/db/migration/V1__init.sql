@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS tours (
   name        VARCHAR(255) NOT NULL,
   description TEXT NOT NULL,
   difficulty  VARCHAR(32) NOT NULL,   -- EASY | MEDIUM | HARD
-  status      VARCHAR(32) NOT NULL,   
+  status      VARCHAR(32) NOT NULL,   -- DRAFT | ACTIVE | ...
   price_cents BIGINT NOT NULL,
   created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
