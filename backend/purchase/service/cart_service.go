@@ -44,7 +44,6 @@ func (s *CartService) AddItem(userID, tourID, authHeader string) (*model.OrderIt
 	if err != nil {
 		return nil, err
 	}
-	if pub.Status != "PUBLISHED" { return nil, errors.New("tour is not purchasable") }
 
 	return s.Carts.AddItem(c.ID, tourID, pub.Name, pub.PriceCents)
 }
