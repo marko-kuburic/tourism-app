@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getBlogFeed, like as likeApi, unlike as unlikeApi } from './blogApi.js';
+import { getFeed, like as likeApi, unlike as unlikeApi } from './blogApi.js';
 // Ako tvoj getProfile nije na ovoj putanji, samo promeni import putanju:
 import { getProfile } from '../api.js';
 
@@ -20,7 +20,7 @@ export default function BlogFeed() {
     let mounted = true;
     (async () => {
       try {
-        const [profile, feed] = await Promise.all([getProfile(), getBlogFeed(100)]);
+  const [profile, feed] = await Promise.all([getProfile(), getFeed(100)]);
         if (!mounted) return;
         setMe(profile || null);
         setBlogs(Array.isArray(feed) ? feed : []);

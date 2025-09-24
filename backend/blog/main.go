@@ -21,7 +21,6 @@ func main() {
 	uri := getenv("MONGO_URI", "mongodb://mongodb:27017")
 	dbName := getenv("MONGO_DB", "tourism")
 	colName := getenv("MONGO_COLLECTION", "blogs")
-	jwtSecret := mustGet("JWT_SECRET")
 
 	// Mongo client
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri))
@@ -53,10 +52,8 @@ func main() {
 		_, _ = w.Write([]byte("ok"))
 	}).Methods(http.MethodGet)
 
-	// protected subrouter (JWT potreban)
-	auth := rtr.NewRoute().Subrouter()
-	auth.Use(handler.JWTMiddleware(jwtSecret))
-	h.RegisterRoutes(auth) // /blogs, /blogs/{id}
+	// Register all routes (handler internally decides which need auth)
+	h.RegisterRoutes(rtr)
 
 	addr := ":8080"
 	log.Println("Blog (Mongo) service listening on", addr)

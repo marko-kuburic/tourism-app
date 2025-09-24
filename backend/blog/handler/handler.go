@@ -25,21 +25,24 @@ func New(s *service.BlogService) *BlogHandler { return &BlogHandler{svc: s} }
 func (h *BlogHandler) RegisterRoutes(r *mux.Router) {
 	// Preflight (OPTIONS) za iste rute
 	r.HandleFunc("/blogs", h.options).Methods(http.MethodOptions)
+	r.HandleFunc("/blogs/feed", h.options).Methods(http.MethodOptions)
 	r.HandleFunc("/blogs/{id}", h.options).Methods(http.MethodOptions)
 	r.HandleFunc("/blogs/{id}/comments", h.options).Methods(http.MethodOptions)
 	r.HandleFunc("/blogs/{id}/comments/{cid}", h.options).Methods(http.MethodOptions)
 	r.HandleFunc("/blogs/{id}/like", h.options).Methods(http.MethodOptions)
 
-	// Zaštićene rute
-	r.HandleFunc("/blogs", h.create).Methods(http.MethodPost)
+	// Public read routes
 	r.HandleFunc("/blogs", h.list).Methods(http.MethodGet)
-	r.HandleFunc("/blogs/{id}", h.get).Methods(http.MethodGet)
-	r.HandleFunc("/blogs/{id}/comments", h.listComments).Methods(http.MethodGet)
-
-
-	// Protected write (JWT)
+	
+	// Protected routes - these must come BEFORE parameterized routes
 	r.HandleFunc("/blogs", h.withAuth(h.create)).Methods(http.MethodPost)
 	r.HandleFunc("/blogs/feed", h.withAuth(h.feed)).Methods(http.MethodGet)
+	
+	// Public parameterized routes - these come AFTER specific routes
+	r.HandleFunc("/blogs/{id}", h.get).Methods(http.MethodGet)
+	r.HandleFunc("/blogs/{id}/comments", h.listComments).Methods(http.MethodGet)
+	
+	// Protected parameterized routes
 	r.HandleFunc("/blogs/{id}/comments", h.withAuth(h.addComment)).Methods(http.MethodPost)
 	r.HandleFunc("/blogs/{id}/comments/{cid}", h.withAuth(h.updateComment)).Methods(http.MethodPatch)
 	r.HandleFunc("/blogs/{id}/comments/{cid}", h.withAuth(h.deleteComment)).Methods(http.MethodDelete)
