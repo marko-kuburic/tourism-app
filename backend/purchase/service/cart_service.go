@@ -11,7 +11,6 @@ import (
 	"purchase/repo"
 )
 
-// === CartService + ctor ======================================================
 
 type CartService struct {
 	Carts  *repo.CartRepo
@@ -22,8 +21,6 @@ type CartService struct {
 func NewCartService(cr *repo.CartRepo, tr *repo.TokenRepo, tc *TourClient) *CartService {
 	return &CartService{Carts: cr, Tokens: tr, Tours: tc}
 }
-
-// === Basic korpa API (postojeća funkcionalnost) ==============================
 
 func (s *CartService) GetCart(userID string) (*model.ShoppingCart, int64, error) {
 	c, err := s.Carts.GetOrCreateOpen(userID)
@@ -43,13 +40,11 @@ func (s *CartService) AddItem(userID, tourID, authHeader string) (*model.OrderIt
 		return nil, err
 	}
 
-	// Provera preko Tour servisa (postojeći endpoint /tours/{id}/public)
 	pub, err := s.Tours.PublicByID(tourID, authHeader)
 	if err != nil {
 		return nil, err
 	}
-	// Po potrebi validiraj status:
-	// if pub.Status != "PUBLISHED" { return nil, errors.New("tour is not purchasable") }
+	if pub.Status != "PUBLISHED" { return nil, errors.New("tour is not purchasable") }
 
 	return s.Carts.AddItem(c.ID, tourID, pub.Name, pub.PriceCents)
 }
@@ -64,14 +59,13 @@ func (s *CartService) RemoveItem(userID string, itemID uuid.UUID) error {
 
 // === SAGA Checkout ===========================================================
 
-// STEP 1: verifikuj sve ture u Tour servisu
-// STEP 2: u jednoj DB transakciji kreiraj sve tokene i zatvori korpu
+// STEP 1: proverim sve ture u Tour servisu
+// STEP 2: u jednoj DB transakciji kreiram tokene i zatvoram korpu
 // COMPENSATION: rollback transakcije -> nema tokena, korpa ostaje OPEN
 func (s *CartService) CheckoutWithAuth(userID, authHeader string) ([]model.PurchaseToken, error) {
 	traceID := uuid.NewString()
 	log.Printf("[SAGA][%s] START Checkout user=%s", traceID, userID)
 
-	// 0) Korpa
 	c, err := s.Carts.GetOrCreateOpen(userID)
 	if err != nil {
 		log.Printf("[SAGA][%s] ERROR getOrCreateCart err=%v", traceID, err)
@@ -82,7 +76,6 @@ func (s *CartService) CheckoutWithAuth(userID, authHeader string) ([]model.Purch
 		return nil, errors.New("cart is empty")
 	}
 
-	// --- STEP 1: VERIFY_TOURS (Tour mikroservis) ---
 	seen := map[string]bool{}
 	var uniqTours []string
 	for _, it := range c.Items {
@@ -100,9 +93,8 @@ func (s *CartService) CheckoutWithAuth(userID, authHeader string) ([]model.Purch
 		}
 	}
 
-	// --- STEP 2: CREATE_TOKENS + MARK_CHECKED_OUT (lokalna transakcija) ---
 	log.Printf("[SAGA][%s] STEP=CREATE_TOKENS begin TX", traceID)
-	tx := s.Carts.DB.Begin()
+	tx := s.Carts.BeginTransaction()
 	if tx.Error != nil {
 		log.Printf("[SAGA][%s] ERROR beginTx err=%v", traceID, tx.Error)
 		return nil, tx.Error
@@ -119,7 +111,7 @@ func (s *CartService) CheckoutWithAuth(userID, authHeader string) ([]model.Purch
 			Token:    uuid.NewString(),
 			IssuedAt: now,
 		}
-		if err := tx.Create(&t).Error; err != nil {
+		if err := s.Tokens.CreateWithTx(tx, &t); err != nil {
 			log.Printf("[SAGA][%s] FAIL CREATE_TOKEN tour=%s err=%v", traceID, tourID, err)
 			if rbErr := tx.Rollback().Error; rbErr != nil {
 				log.Printf("[SAGA][%s] ERROR rollbackAfterCreate err=%v", traceID, rbErr)
@@ -131,9 +123,7 @@ func (s *CartService) CheckoutWithAuth(userID, authHeader string) ([]model.Purch
 	log.Printf("[SAGA][%s] STEP=CREATE_TOKENS ok count=%d", traceID, len(created))
 
 	log.Printf("[SAGA][%s] STEP=MARK_CHECKED_OUT cart=%s", traceID, c.ID.String())
-	if err := tx.Model(&model.ShoppingCart{}).
-		Where("id=?", c.ID).
-		Update("status", model.CartCheckedOut).Error; err != nil {
+	if err := s.Carts.MarkCheckedOutTx(tx, c.ID); err != nil {
 		log.Printf("[SAGA][%s] FAIL MARK_CHECKED_OUT err=%v", traceID, err)
 		if rbErr := tx.Rollback().Error; rbErr != nil {
 			log.Printf("[SAGA][%s] ERROR rollbackAfterMark err=%v", traceID, rbErr)
@@ -150,7 +140,6 @@ func (s *CartService) CheckoutWithAuth(userID, authHeader string) ([]model.Purch
 	return created, nil
 }
 
-// Wrapper radi kompatibilnosti sa postojećim pozivaocima
 func (s *CartService) Checkout(userID string) ([]model.PurchaseToken, error) {
 	return s.CheckoutWithAuth(userID, "")
 }
