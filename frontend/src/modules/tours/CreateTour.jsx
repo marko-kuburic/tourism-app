@@ -7,12 +7,13 @@ import "../../styles/tours.css";
 const initialForm = {
   name: "",
   description: "",
-  price: "",          // UI price, we’ll convert to cents
   difficulty: "EASY", // REQUIRED
+  tagsCSV: "",        // helper for quick paste
 };
 
 export default function CreateTour() {
   const [form, setForm] = useState(initialForm);
+  const [tags, setTags] = useState([]); // string[]
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -20,16 +21,25 @@ export default function CreateTour() {
   function onChange(e) {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
+    if (name === "tagsCSV") syncCsvToTags(value);
   }
 
-  function toPriceCents(raw) {
-    const cleaned = String(raw ?? "")
-      .trim()
-      .replace(",", ".")
-      .replace(/[^\d.]/g, "");
-    const n = cleaned === "" ? NaN : Number(cleaned);
-    if (!Number.isFinite(n)) return NaN;
-    return Math.round(n * 100);
+  function syncCsvToTags(csv) {
+    const arr = String(csv || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    setTags(arr);
+  }
+
+  function addTag(t) {
+    const v = String(t || "").trim();
+    if (!v) return;
+    setTags((prev) => (prev.includes(v) ? prev : [...prev, v]));
+  }
+
+  function removeTagAt(i) {
+    setTags((prev) => prev.filter((_, idx) => idx !== i));
   }
 
   async function onSubmit(e) {
@@ -37,25 +47,23 @@ export default function CreateTour() {
     setError("");
 
     if (!form.name.trim()) return setError("Name is required.");
-    const priceCents = toPriceCents(form.price);
-    if (!Number.isFinite(priceCents) || priceCents <= 0) {
-      return setError("Invalid price");
-    }
+    if (!form.description.trim()) return setError("Description is required.");
     if (!form.difficulty) return setError("Difficulty is required.");
 
-    // Payload: ONLY what backend expects
+    // Spec requires: initial price = 0, status = DRAFT
     const payload = {
       name: form.name.trim(),
-      description: String(form.description || "").trim(),
-      priceCents,
-      difficulty: form.difficulty, // EASY | MEDIUM | HARD
-      status: "PUBLISHED",            // default status
+      description: form.description.trim(),
+      difficulty: form.difficulty,   // EASY | MEDIUM | HARD
+      tags,                          // [] or ["city","food"]
+      priceCents: 0,                 // auto-set to 0 on creation
+      status: "DRAFT",               // required by spec
     };
 
     try {
       setSubmitting(true);
       await ToursAPI.create(payload);
-      navigate("/tours");
+      navigate("/tours"); // author can see their tours on the list page
     } catch (err) {
       setError(err?.message || "Failed to create tour.");
     } finally {
@@ -93,17 +101,6 @@ export default function CreateTour() {
 
           <div className="t-grid">
             <div className="t-row">
-              <label>Price* (shown to user)</label>
-              <input
-                name="price"
-                value={form.price}
-                onChange={onChange}
-                inputMode="decimal"
-                placeholder="e.g. 25"
-              />
-            </div>
-
-            <div className="t-row">
               <label>Difficulty*</label>
               <select
                 name="difficulty"
@@ -115,6 +112,78 @@ export default function CreateTour() {
                 <option value="HARD">Hard</option>
               </select>
             </div>
+
+            <div className="t-row">
+              <label>Tags (CSV)</label>
+              <input
+                name="tagsCSV"
+                value={form.tagsCSV}
+                onChange={onChange}
+                placeholder="city, history, family"
+              />
+              <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                <input
+                  placeholder="Add single tag"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTag(e.currentTarget.value);
+                      e.currentTarget.value = "";
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="t-btn-secondary"
+                  onClick={(e) => {
+                    const inp = e.currentTarget.previousSibling;
+                    if (inp && inp.value) {
+                      addTag(inp.value);
+                      inp.value = "";
+                    }
+                  }}
+                >
+                  Add tag
+                </button>
+              </div>
+              {!!tags.length && (
+                <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {tags.map((t, i) => (
+                    <span
+                      key={t + i}
+                      className="t-chip"
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: 999,
+                        background: "#eef",
+                        border: "1px solid #cdd",
+                        display: "inline-flex",
+                        gap: 6,
+                        alignItems: "center",
+                      }}
+                    >
+                      {t}
+                      <button
+                        type="button"
+                        className="t-btn-link"
+                        onClick={() => removeTagAt(i)}
+                        title="Remove"
+                        aria-label={`Remove ${t}`}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Price is auto-set to 0 by spec; we show it as read-only info */}
+          <div className="t-row">
+            <label>Initial price</label>
+            <input value="0" readOnly />
+            <small className="muted">Price is set to 0 upon creation (status: DRAFT).</small>
           </div>
 
           <div className="t-actions">
@@ -124,7 +193,11 @@ export default function CreateTour() {
             <button
               type="button"
               className="t-btn-secondary"
-              onClick={() => setForm(initialForm)}
+              onClick={() => {
+                setForm(initialForm);
+                setTags([]);
+                setError("");
+              }}
               disabled={submitting}
             >
               Reset

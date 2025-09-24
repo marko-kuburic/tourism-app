@@ -78,7 +78,7 @@ public class TourGrpcService extends TourServiceGrpc.TourServiceImplBase {
             }
 
             Difficulty difficulty = safeDifficulty(request.getDifficulty());
-            Status status = Status.PUBLISHED; // or derive from request if needed
+            Status status = Status.DRAFT; // or derive from request if needed
 
             // ---- No Lombok: use setters or an explicit constructor you define on the entity ----
             Tour entity = new Tour();
